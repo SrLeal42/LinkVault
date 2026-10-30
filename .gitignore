@@ -1,0 +1,71 @@
+# ==============================================================================
+# Environment & Secrets
+# ==============================================================================
+.env
+.env.*
+!.env.example
+
+# ==============================================================================
+# Frontend (Node.js / pnpm / Vite / Playwright / Vitest)
+# ==============================================================================
+node_modules/
+dist/
+dist-ssr/
+*.local
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Playwright & Testing
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+/frontend/playwright/.cache/
+coverage/
+
+# ==============================================================================
+# Backend (Python / uv / pytest / mypy / Ruff / Alembic)
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.uv/
+
+# Tool caches & coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+/backend/openapi.json
+
+# ==============================================================================
+# Docker & Local Databases
+# ==============================================================================
+postgres_data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================================================================
+# IDEs & OS
+# ==============================================================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
