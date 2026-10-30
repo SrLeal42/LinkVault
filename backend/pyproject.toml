@@ -40,7 +40,6 @@ select = [
     "C4",     # flake8-comprehensions
     "UP",     # pyupgrade
     "SIM",    # flake8-simplify
-    "TCH",    # flake8-type-checking
     "RUF",    # regras nativas do Ruff
     "S",      # flake8-bandit (segurança básica)
 ]
