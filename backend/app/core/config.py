@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: Literal["development", "test", "production"] = "development"
     enable_docs: bool = True
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     # Banco de Dados (PostgreSQL 17 + psycopg 3)
     database_url: str = Field(

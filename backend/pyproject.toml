@@ -82,3 +82,6 @@ warn_required_dynamic_aliases = true
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra -q --strict-markers"
+filterwarnings = [
+    "ignore:.*is deprecated.*:starlette.exceptions.StarletteDeprecationWarning:fastapi.testclient",
+]
