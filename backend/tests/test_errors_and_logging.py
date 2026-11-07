@@ -1,14 +1,8 @@
 import json
 import logging
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from pydantic import BaseModel, Field
-import pytest
-
 from app.core.errors import (
     NotFoundError,
-    ProblemDetail,
     RateLimitExceededError,
     register_exception_handlers,
 )
@@ -16,10 +10,12 @@ from app.core.logging import (
     REQUEST_ID_HEADER,
     JsonLogFormatter,
     RequestContextMiddleware,
-    resolve_request_id,
     set_request_id,
 )
 from app.main import app
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from pydantic import BaseModel, Field
 
 client = TestClient(app)
 
@@ -154,7 +150,7 @@ def test_json_log_formatter_serializes_valid_json() -> None:
         args=(),
         exc_info=None,
     )
-    record.event_data = {"user_id": "usr-123"}  # type: ignore[attr-defined]
+    record.event_data = {"user_id": "usr-123"}
 
     raw_json = formatter.format(record)
     parsed = json.loads(raw_json)

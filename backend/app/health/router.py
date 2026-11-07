@@ -18,7 +18,14 @@ def health_check() -> HealthResponse:
 
 @router.get(
     "/ready",
+    operation_id="readiness_check",
     response_model=ReadyResponse,
+    responses={
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "model": ReadyResponse,
+            "description": "Aplicação degradada ou banco de dados inacessível",
+        }
+    },
     summary="Verifica se a aplicação e o banco de dados estão prontos",
 )
 def readiness_check(session: DbSession, response: Response) -> ReadyResponse:

@@ -12,8 +12,8 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 - [x] Configurar SQLAlchemy, Alembic e PostgreSQL no Docker Compose.
 - [x] Implementar `/api/health` e `/api/ready`.
 - [x] Configurar o tratamento de erros (Problem Details) e os logs estruturados.
-- [ ] Configurar o pipeline de CI básico.
-- [ ] Configurar a geração de tipos a partir do OpenAPI.
+- [x] Configurar o pipeline de CI básico.
+- [x] Configurar a geração de tipos a partir do OpenAPI.
 - [ ] **Publicar o esqueleto na Vercel, no Render e no Neon**, validando o rewrite e o cold start desde o início.
 
 ### 1.2. Fase 2 — Autenticação

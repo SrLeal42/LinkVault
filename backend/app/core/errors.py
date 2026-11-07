@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -216,7 +215,8 @@ def build_problem_response(
 
 
 def app_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    assert isinstance(exc, AppError)
+    if not isinstance(exc, AppError):
+        return unhandled_exception_handler(request, exc)
     return build_problem_response(
         request,
         status_code=exc.status_code,
@@ -229,7 +229,8 @@ def app_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    assert isinstance(exc, RequestValidationError)
+    if not isinstance(exc, RequestValidationError):
+        return unhandled_exception_handler(request, exc)
     return build_problem_response(
         request,
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -241,7 +242,8 @@ def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    assert isinstance(exc, StarletteHTTPException)
+    if not isinstance(exc, StarletteHTTPException):
+        return unhandled_exception_handler(request, exc)
     title_mapping: dict[int, str] = {
         status.HTTP_404_NOT_FOUND: "Não encontrado",
         status.HTTP_405_METHOD_NOT_ALLOWED: "Método não permitido",
