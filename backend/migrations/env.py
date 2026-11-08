@@ -1,5 +1,6 @@
 from logging.config import fileConfig
 
+import app.auth.models  # noqa: F401
 from alembic import context
 from app.core.config import get_settings
 from app.core.db import Base

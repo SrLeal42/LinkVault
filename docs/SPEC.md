@@ -418,7 +418,7 @@ Constraint: `CHECK (is_demo = (expires_at IS NOT NULL))`.
 - `id`
 - `user_id` — FK para `users`, `ON DELETE CASCADE`.
 - `token_hash` — SHA-256 do token do cookie; único.
-- `csrf_token_hash`
+- `csrf_token` — token sincronizador em texto puro para validação CSRF (Synchronizer Token Pattern).
 - `created_at`
 - `last_seen_at`
 - `idle_expires_at`

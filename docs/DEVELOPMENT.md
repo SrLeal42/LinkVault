@@ -18,7 +18,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 
 ### 1.2. Fase 2 — Autenticação
 
-- [ ] Implementar o modelo de usuários e sessões.
+- [x] Implementar o modelo de usuários e sessões.
 - [ ] Implementar cadastro e login com Argon2id.
 - [ ] Implementar o cookie de sessão, a expiração e o logout.
 - [ ] Implementar a proteção CSRF.
