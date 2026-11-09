@@ -258,9 +258,8 @@ def verify_request_content_type(request: Request) -> None:
     raw_content_type = request.headers.get("content-type")
     content_length_raw = request.headers.get("content-length", "0").strip()
     has_body = (
-        (content_length_raw.isdigit() and int(content_length_raw) > 0)
-        or "transfer-encoding" in request.headers
-    )
+        content_length_raw.isdigit() and int(content_length_raw) > 0
+    ) or "transfer-encoding" in request.headers
     if raw_content_type is not None:
         media_type = raw_content_type.split(";", 1)[0].strip().lower()
         if media_type != "application/json":
@@ -269,9 +268,7 @@ def verify_request_content_type(request: Request) -> None:
             )
         return
     if has_body or method in {"PUT", "PATCH"}:
-        raise CSRFError(
-            detail="Content-Type application/json é obrigatório para esta requisição."
-        )
+        raise CSRFError(detail="Content-Type application/json é obrigatório para esta requisição.")
 
 
 def verify_csrf_token(request: Request, expected_token: str) -> None:

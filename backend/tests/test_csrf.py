@@ -11,6 +11,7 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from tests.conftest import DEFAULT_TEST_ORIGIN
 
 router_for_csrf_test = APIRouter(prefix="/api/test-csrf", tags=["test"])

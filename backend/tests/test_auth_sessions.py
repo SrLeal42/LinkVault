@@ -9,6 +9,7 @@ from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from tests.conftest import DEFAULT_TEST_ORIGIN
 
 

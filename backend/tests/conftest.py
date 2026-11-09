@@ -5,8 +5,8 @@ from app.core.config import get_settings
 from app.core.db import engine
 from sqlalchemy.orm import Session
 
-
 DEFAULT_TEST_ORIGIN: str = get_settings().allowed_origins[0]
+
 
 @pytest.fixture
 def auth_client_headers() -> dict[str, str]:
