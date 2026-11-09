@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.models import User, UserSession
 from app.auth.schemas import LoginRequest, RegisterRequest
 from app.core.config import Settings, get_settings
-from app.core.errors import ConflictError, UnauthorizedError
+from app.core.errors import ConflictError, CSRFError, UnauthorizedError
 from app.core.security import (
     check_needs_rehash,
     generate_csrf_token,
@@ -215,9 +216,31 @@ def resolve_authenticated_session(
     return AuthenticatedSession(user=user, session=user_session)
 
 
-def revoke_session_by_token(db: Session, raw_token: str | None) -> None:
+def revoke_session_by_token(
+    db: Session,
+    raw_token: str | None,
+    *,
+    csrf_token_header: str | None = None,
+) -> None:
     if not raw_token:
         return
+
+    now = datetime.now(UTC)
     token_hash = hash_session_token(raw_token)
-    db.execute(delete(UserSession).where(UserSession.token_hash == token_hash))
+    user_session = db.scalar(select(UserSession).where(UserSession.token_hash == token_hash))
+
+    if user_session is None:
+        return
+
+    if now >= user_session.idle_expires_at or now >= user_session.absolute_expires_at:
+        db.delete(user_session)
+        db.commit()
+        return
+
+    if not csrf_token_header or not secrets.compare_digest(
+        csrf_token_header, user_session.csrf_token
+    ):
+        raise CSRFError(detail="Token CSRF ausente ou inválido.")
+
+    db.delete(user_session)
     db.commit()

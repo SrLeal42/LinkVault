@@ -10,13 +10,14 @@ from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tests.conftest import DEFAULT_TEST_ORIGIN
 
 
 @pytest.fixture
 def client(db_session: Session) -> Generator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db_session
     try:
-        yield TestClient(app)
+        yield TestClient(app, headers={"Origin": DEFAULT_TEST_ORIGIN})
     finally:
         app.dependency_overrides.clear()
 

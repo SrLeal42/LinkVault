@@ -9,13 +9,14 @@ from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tests.conftest import DEFAULT_TEST_ORIGIN
 
 
 @pytest.fixture
 def client(db_session: Session) -> Generator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db_session
     try:
-        yield TestClient(app)
+        yield TestClient(app, headers={"Origin": DEFAULT_TEST_ORIGIN})
     finally:
         app.dependency_overrides.clear()
 
@@ -163,7 +164,8 @@ def test_logout_revokes_session_clears_cookie_and_is_idempotent(
     token_hash = hash_session_token(raw_token)
 
     # 2. Logout
-    logout_res = client.post("/api/auth/logout")
+    csrf_token = reg_res.json()["csrf_token"]
+    logout_res = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf_token})
     assert logout_res.status_code == 204
     assert logout_res.text == ""
 

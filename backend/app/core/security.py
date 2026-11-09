@@ -2,13 +2,21 @@ import hashlib
 import re
 import secrets
 from functools import lru_cache
+from urllib.parse import urlsplit
 
 from argon2 import PasswordHasher, Type
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.core.config import Settings, get_settings
-from app.core.errors import UnprocessableContentError, ValidationErrorItem
+from app.core.errors import (
+    AppError,
+    CSRFError,
+    UnprocessableContentError,
+    ValidationErrorItem,
+    app_error_handler,
+)
 
 SESSION_COOKIE_NAME_DEV: str = "linkvault_session"
 SESSION_COOKIE_NAME_PROD: str = "__Host-linkvault_session"
@@ -38,6 +46,9 @@ COMMON_PASSWORDS: frozenset[str] = frozenset(
         "trustnoone12",
     }
 )
+
+CSRF_HEADER_NAME: str = "X-CSRF-Token"
+SAFE_METHODS: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 
 
 @lru_cache(maxsize=8)
@@ -213,3 +224,72 @@ def extract_session_token(request: Request, settings: Settings | None = None) ->
         return None
     cleaned = raw_token.strip()
     return cleaned if cleaned else None
+
+
+def normalize_origin(url_or_origin: str) -> str | None:
+    cleaned = url_or_origin.strip()
+    if not cleaned or cleaned.lower() == "null":
+        return None
+    parsed = urlsplit(cleaned)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+
+def verify_request_origin(request: Request, settings: Settings | None = None) -> None:
+    if request.method.upper() in SAFE_METHODS:
+        return
+    cfg = settings or get_settings()
+    raw_source = request.headers.get("origin") or request.headers.get("referer")
+    if not raw_source:
+        raise CSRFError(detail="Cabeçalho Origin ou Referer ausente na requisição.")
+    request_origin = normalize_origin(raw_source)
+    allowed = {
+        norm for origin in cfg.allowed_origins if (norm := normalize_origin(origin)) is not None
+    }
+    if request_origin is None or request_origin not in allowed:
+        raise CSRFError(detail="Origem da requisição não permitida.")
+
+
+def verify_request_content_type(request: Request) -> None:
+    method = request.method.upper()
+    if method in SAFE_METHODS:
+        return
+    raw_content_type = request.headers.get("content-type")
+    content_length_raw = request.headers.get("content-length", "0").strip()
+    has_body = (
+        (content_length_raw.isdigit() and int(content_length_raw) > 0)
+        or "transfer-encoding" in request.headers
+    )
+    if raw_content_type is not None:
+        media_type = raw_content_type.split(";", 1)[0].strip().lower()
+        if media_type != "application/json":
+            raise CSRFError(
+                detail="Content-Type inválido. Endpoints de escrita exigem application/json."
+            )
+        return
+    if has_body or method in {"PUT", "PATCH"}:
+        raise CSRFError(
+            detail="Content-Type application/json é obrigatório para esta requisição."
+        )
+
+
+def verify_csrf_token(request: Request, expected_token: str) -> None:
+    provided_token = request.headers.get(CSRF_HEADER_NAME)
+    if (
+        not provided_token
+        or not expected_token
+        or not secrets.compare_digest(provided_token, expected_token)
+    ):
+        raise CSRFError(detail="Token CSRF ausente ou inválido.")
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.method.upper() not in SAFE_METHODS:
+            try:
+                verify_request_origin(request)
+                verify_request_content_type(request)
+            except AppError as exc:
+                return app_error_handler(request, exc)
+        return await call_next(request)

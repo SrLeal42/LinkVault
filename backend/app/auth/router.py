@@ -10,6 +10,7 @@ from app.auth.service import (
     revoke_session_by_token,
 )
 from app.core.security import (
+    CSRF_HEADER_NAME,
     clear_session_cookie,
     extract_session_token,
     set_session_cookie,
@@ -82,5 +83,6 @@ def get_me(auth_session: CurrentSession) -> AuthResponse:
 )
 def logout(request: Request, response: Response, session: DbSession) -> None:
     raw_token = extract_session_token(request)
-    revoke_session_by_token(session, raw_token)
+    csrf_token = request.headers.get(CSRF_HEADER_NAME)
+    revoke_session_by_token(session, raw_token, csrf_token_header=csrf_token)
     clear_session_cookie(response)

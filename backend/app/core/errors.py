@@ -106,6 +106,22 @@ class ForbiddenError(AppError):
         )
 
 
+class CSRFError(ForbiddenError):
+    def __init__(
+        self,
+        detail: str = "Falha na validação de segurança CSRF.",
+        title: str = "Requisição bloqueada (CSRF)",
+        error_type: str = "urn:linkvault:error:csrf_failed",
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(
+            detail=detail,
+            title=title,
+            error_type=error_type,
+            headers=headers,
+        )
+
+
 class NotFoundError(AppError):
     def __init__(
         self,
