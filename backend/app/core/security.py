@@ -5,7 +5,7 @@ from functools import lru_cache
 
 from argon2 import PasswordHasher, Type
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
-from fastapi import Response
+from fastapi import Request, Response
 
 from app.core.config import Settings, get_settings
 from app.core.errors import UnprocessableContentError, ValidationErrorItem
@@ -203,3 +203,13 @@ def clear_session_cookie(
         secure=cfg.is_production,
         samesite="lax",
     )
+
+
+def extract_session_token(request: Request, settings: Settings | None = None) -> str | None:
+    cfg = settings or get_settings()
+    cookie_name = get_session_cookie_name(cfg)
+    raw_token = request.cookies.get(cookie_name)
+    if not raw_token:
+        return None
+    cleaned = raw_token.strip()
+    return cleaned if cleaned else None

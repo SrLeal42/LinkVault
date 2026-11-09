@@ -1,15 +1,21 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Response, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Header, Request, Response, status
 
+from app.auth.dependencies import CurrentSession, DbSession
 from app.auth.schemas import AuthResponse, LoginRequest, RegisterRequest, UserResponse
-from app.auth.service import authenticate_user, register_user
-from app.core.db import get_db
-from app.core.security import set_session_cookie
+from app.auth.service import (
+    authenticate_user,
+    register_user,
+    revoke_session_by_token,
+)
+from app.core.security import (
+    clear_session_cookie,
+    extract_session_token,
+    set_session_cookie,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.post(
@@ -52,3 +58,29 @@ def login(
         user=UserResponse.model_validate(result.user),
         csrf_token=result.csrf_token,
     )
+
+
+@router.get(
+    "/me",
+    operation_id="get_current_user_session",
+    response_model=AuthResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Retorna os dados do usuário autenticado e o token CSRF da sessão",
+)
+def get_me(auth_session: CurrentSession) -> AuthResponse:
+    return AuthResponse(
+        user=UserResponse.model_validate(auth_session.user),
+        csrf_token=auth_session.session.csrf_token,
+    )
+
+
+@router.post(
+    "/logout",
+    operation_id="logout_user",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Encerra a sessão atual e remove o cookie de autenticação",
+)
+def logout(request: Request, response: Response, session: DbSession) -> None:
+    raw_token = extract_session_token(request)
+    revoke_session_by_token(session, raw_token)
+    clear_session_cookie(response)

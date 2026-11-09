@@ -167,3 +167,57 @@ def authenticate_user(
         raw_session_token=raw_token,
         csrf_token=csrf_token,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class AuthenticatedSession:
+    user: User
+    session: UserSession
+
+
+def resolve_authenticated_session(
+    db: Session,
+    raw_token: str | None,
+    *,
+    settings: Settings | None = None,
+) -> AuthenticatedSession:
+    if not raw_token:
+        raise UnauthorizedError()
+
+    cfg = settings or get_settings()
+    now = datetime.now(UTC)
+    token_hash = hash_session_token(raw_token)
+    stmt = (
+        select(UserSession)
+        .join(User, UserSession.user_id == User.id)
+        .where(UserSession.token_hash == token_hash)
+    )
+
+    user_session = db.scalar(stmt)
+    if user_session is None:
+        raise UnauthorizedError(detail="Sessão inválida ou expirada.")
+    if now >= user_session.idle_expires_at or now >= user_session.absolute_expires_at:
+        db.delete(user_session)
+        db.commit()
+        raise UnauthorizedError(detail="Sessão inválida ou expirada.")
+
+    user = user_session.user
+    if user.is_demo and user.expires_at is not None and now >= user.expires_at:
+        db.delete(user)
+        db.commit()
+        raise UnauthorizedError(detail="Sessão inválida ou expirada.")
+    elapsed_seconds = (now - user_session.last_seen_at).total_seconds()
+    if elapsed_seconds >= cfg.session_touch_interval_seconds:
+        user_session.last_seen_at = now
+        candidate_idle = now + timedelta(seconds=cfg.session_idle_ttl_seconds)
+        user_session.idle_expires_at = min(candidate_idle, user_session.absolute_expires_at)
+        db.commit()
+    return AuthenticatedSession(user=user, session=user_session)
+
+
+def revoke_session_by_token(db: Session, raw_token: str | None) -> None:
+    if not raw_token:
+        return
+    token_hash = hash_session_token(raw_token)
+    db.execute(delete(UserSession).where(UserSession.token_hash == token_hash))
+    db.commit()

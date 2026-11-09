@@ -219,9 +219,7 @@ def test_login_opportunistic_cleanup_of_expired_sessions(
     res = client.post("/api/auth/login", json={"email": email, "password": password})
     assert res.status_code == 200
 
-    sessions = db_session.scalars(
-        select(UserSession).where(UserSession.user_id == user.id)
-    ).all()
+    sessions = db_session.scalars(select(UserSession).where(UserSession.user_id == user.id)).all()
     assert len(sessions) == 2
     hashes = {s.token_hash for s in sessions}
     assert expired_session.token_hash not in hashes

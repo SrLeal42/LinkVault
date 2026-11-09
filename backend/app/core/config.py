@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     enable_docs: bool = True
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
-    # Banco de Dados (PostgreSQL 17 + psycopg 3)
+    # Banco de Dados
     database_url: str = Field(
         default="postgresql+psycopg://linkvault:linkvault_dev@localhost:5432/linkvault"
     )
@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # Sessões (em segundos)
     session_idle_ttl_seconds: int = 60 * 60 * 24 * 7  # 7 dias
     session_absolute_ttl_seconds: int = 60 * 60 * 24 * 30  # 30 dias
+    session_touch_interval_seconds: int = 60 * 5  # 5 minutos (throttle de escrita)
 
     # Origens confiáveis para validação de Origin/Referer (CSRF)
     allowed_origins: list[str] = ["http://localhost:5173"]

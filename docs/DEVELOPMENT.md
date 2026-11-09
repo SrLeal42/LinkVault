@@ -20,7 +20,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 
 - [x] Implementar o modelo de usuários e sessões.
 - [x] Implementar cadastro e login com Argon2id.
-- [ ] Implementar o cookie de sessão, a expiração e o logout.
+- [x] Implementar o cookie de sessão, a expiração e o logout.
 - [ ] Implementar a proteção CSRF.
 - [ ] Implementar o rate limiting no PostgreSQL.
 - [ ] Implementar a alteração de senha.
