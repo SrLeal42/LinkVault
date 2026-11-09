@@ -140,6 +140,26 @@ class ConflictError(AppError):
         )
 
 
+class UnprocessableContentError(AppError):
+    def __init__(
+        self,
+        detail: str = "Um ou mais campos enviados são inválidos.",
+        *,
+        errors: list[ValidationErrorItem],
+        title: str = "Erro de validação",
+        error_type: str = "urn:linkvault:error:validation_error",
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            title=title,
+            detail=detail,
+            error_type=error_type,
+            headers=headers,
+            errors=errors,
+        )
+
+
 class RateLimitExceededError(AppError):
     def __init__(
         self,

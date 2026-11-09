@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from app.auth.router import router as auth_router
 from app.core.config import get_settings
 from app.core.errors import ProblemDetail, register_exception_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging
@@ -14,6 +15,11 @@ def create_app() -> FastAPI:
 
     default_responses: dict[int | str, dict[str, Any]] = {
         400: {"model": ProblemDetail, "description": "Requisição inválida (RFC 9457)"},
+        401: {
+            "model": ProblemDetail,
+            "description": "Não autenticado ou credenciais inválidas (RFC 9457)",
+        },
+        409: {"model": ProblemDetail, "description": "Conflito de dados (RFC 9457)"},
         422: {"model": ProblemDetail, "description": "Erro de validação (RFC 9457)"},
         500: {"model": ProblemDetail, "description": "Erro interno do servidor (RFC 9457)"},
     }
@@ -31,6 +37,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.include_router(health_router, prefix="/api")
+    app.include_router(auth_router, prefix="/api")
 
     return app
 
