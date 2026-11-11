@@ -2,13 +2,11 @@ from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
-from app.auth.models import AuthAttempt, AuthAttemptScope, User
+from app.auth.models import AuthAttempt, AuthAttemptScope
 from app.auth.service import cleanup_expired_auth_attempts, enforce_demo_rate_limit
-from app.core.config import Settings, get_settings
+from app.core.config import Settings
 from app.core.db import get_db
 from app.core.errors import RateLimitExceededError
-from app.core.security import hash_rate_limit_key
 from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import select

@@ -325,6 +325,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Erro interno do servidor (RFC 9457) */
             500: {
                 headers: {
@@ -390,6 +399,15 @@ export interface operations {
             };
             /** @description Erro de validação (RFC 9457) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -464,6 +482,15 @@ export interface operations {
             };
             /** @description Erro de validação (RFC 9457) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -549,6 +576,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Erro interno do servidor (RFC 9457) */
             500: {
                 headers: {
@@ -623,6 +659,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Erro interno do servidor (RFC 9457) */
             500: {
                 headers: {
@@ -690,6 +735,15 @@ export interface operations {
             };
             /** @description Erro de validação (RFC 9457) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
