@@ -23,7 +23,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 - [x] Implementar o cookie de sessão, a expiração e o logout.
 - [x] Implementar a proteção CSRF.
 - [x] Implementar o rate limiting no PostgreSQL.
-- [ ] Implementar a alteração de senha.
+- [x] Implementar a alteração de senha.
 - [ ] Implementar usuários demo efêmeros.
 - [ ] Testar autenticação, autorização, CSRF e limites.
 

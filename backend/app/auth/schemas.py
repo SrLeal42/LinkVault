@@ -70,6 +70,20 @@ class LoginRequest(BaseModel):
         return v.strip().lower()
 
 
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    current_password: str = Field(
+        min_length=1,
+        max_length=128,
+        description="Senha atual do usuário.",
+    )
+    new_password: str = Field(
+        min_length=12,
+        max_length=128,
+        description="Nova senha em texto puro (12 a 128 caracteres).",
+    )
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

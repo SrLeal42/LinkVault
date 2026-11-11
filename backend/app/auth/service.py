@@ -10,14 +10,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.models import AuthAttempt, AuthAttemptScope, User, UserSession
-from app.auth.schemas import LoginRequest, RegisterRequest
+from app.auth.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest
 from app.core.config import Settings, get_settings
 from app.core.errors import (
     ConflictError,
     CSRFError,
+    ForbiddenError,
     RateLimitExceededError,
     UnauthorizedError,
     UnprocessableContentError,
+    ValidationErrorItem,
 )
 from app.core.security import (
     check_needs_rehash,
@@ -33,6 +35,8 @@ from app.core.security import (
 )
 
 GENERIC_LOGIN_ERROR: str = "E-mail ou senha inválidos."
+
+CURRENT_PASSWORD_ERROR: str = "A senha atual está incorreta."  # noqa: S105
 
 
 @dataclass(frozen=True, slots=True)
@@ -466,3 +470,99 @@ def revoke_session_by_token(
 
     db.delete(user_session)
     db.commit()
+
+
+def change_user_password(
+    db: Session,
+    *,
+    auth_session: AuthenticatedSession,
+    payload: ChangePasswordRequest,
+    client_ip: str = "unknown",
+    user_agent: str | None = None,
+    settings: Settings | None = None,
+) -> AuthSessionResult:
+    cfg = settings or get_settings()
+    user = auth_session.user
+
+    if user.is_demo:
+        raise ForbiddenError(detail="Contas de demonstração não podem alterar a senha.")
+
+    now = datetime.now(UTC)
+    normalized_email = normalize_email(user.email)
+    ip_hash = hash_rate_limit_key("ip", client_ip)
+    email_hash = hash_rate_limit_key("email", normalized_email)
+    cleanup_expired_auth_attempts(db, now=now, settings=cfg)
+
+    try:
+        check_rate_limit(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hash=ip_hash,
+            max_attempts=cfg.rate_limit_login_ip_max_attempts,
+            window_seconds=cfg.rate_limit_login_window_seconds,
+            only_failures=True,
+            now=now,
+        )
+        check_rate_limit(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hash=email_hash,
+            max_attempts=cfg.rate_limit_login_email_max_attempts,
+            window_seconds=cfg.rate_limit_login_window_seconds,
+            only_failures=True,
+            now=now,
+        )
+    except RateLimitExceededError:
+        db.commit()
+        raise
+
+    if not verify_password(user.password_hash, payload.current_password, cfg):
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hashes=(ip_hash, email_hash),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
+        raise UnauthorizedError(detail=CURRENT_PASSWORD_ERROR)
+
+    validate_password_policy(payload.new_password, email=normalized_email, settings=cfg)
+
+    if payload.new_password == payload.current_password:
+        raise UnprocessableContentError(
+            detail="A senha fornecida não atende aos requisitos de segurança.",
+            errors=[
+                ValidationErrorItem(
+                    field="new_password",
+                    message="A nova senha deve ser diferente da senha atual.",
+                    code="value_error",
+                )
+            ],
+        )
+
+    record_auth_attempts(
+        db,
+        scope=AuthAttemptScope.LOGIN,
+        key_hashes=(ip_hash, email_hash),
+        succeeded=True,
+        now=now,
+    )
+
+    user.password_hash = hash_password(payload.new_password, cfg)
+    user.updated_at = now
+    db.execute(delete(UserSession).where(UserSession.user_id == user.id))
+    new_session, raw_token, csrf_token = create_user_session(
+        db,
+        user=user,
+        user_agent=user_agent,
+        settings=cfg,
+    )
+    db.commit()
+
+    return AuthSessionResult(
+        user=user,
+        session=new_session,
+        raw_session_token=raw_token,
+        csrf_token=csrf_token,
+    )

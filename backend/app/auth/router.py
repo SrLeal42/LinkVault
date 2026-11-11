@@ -3,9 +3,16 @@ from typing import Annotated
 from fastapi import APIRouter, Header, Request, Response, status
 
 from app.auth.dependencies import CurrentSession, DbSession
-from app.auth.schemas import AuthResponse, LoginRequest, RegisterRequest, UserResponse
+from app.auth.schemas import (
+    AuthResponse,
+    ChangePasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    UserResponse,
+)
 from app.auth.service import (
     authenticate_user,
+    change_user_password,
     register_user,
     revoke_session_by_token,
 )
@@ -91,3 +98,33 @@ def logout(request: Request, response: Response, session: DbSession) -> None:
     csrf_token = request.headers.get(CSRF_HEADER_NAME)
     revoke_session_by_token(session, raw_token, csrf_token_header=csrf_token)
     clear_session_cookie(response)
+
+
+@router.post(
+    "/password",
+    operation_id="change_password",
+    response_model=AuthResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Altera a senha do usuário, revoga sessões anteriores e rotaciona a sessão atual",
+)
+def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    auth_session: CurrentSession,
+    session: DbSession,
+    user_agent: Annotated[str | None, Header(include_in_schema=False)] = None,
+) -> AuthResponse:
+    client_ip = extract_client_ip(request)
+    result = change_user_password(
+        session,
+        auth_session=auth_session,
+        payload=payload,
+        client_ip=client_ip,
+        user_agent=user_agent,
+    )
+    set_session_cookie(response, result.raw_session_token)
+    return AuthResponse(
+        user=UserResponse.model_validate(result.user),
+        csrf_token=result.csrf_token,
+    )
