@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     # Origens confiáveis para validação de Origin/Referer (CSRF)
     allowed_origins: list[str] = ["http://localhost:5173"]
 
+    # Rate Limiting (PostgreSQL) & Proxy Confiável
+    trusted_proxy_count: int = 1
+    rate_limit_login_email_max_attempts: int = 5
+    rate_limit_login_ip_max_attempts: int = 20
+    rate_limit_login_window_seconds: int = 60 * 15  # 15 minutos
+    rate_limit_register_ip_max_attempts: int = 5
+    rate_limit_register_window_seconds: int = 60 * 60  # 1 hora
+    rate_limit_demo_ip_max_attempts: int = 10
+    rate_limit_demo_window_seconds: int = 60 * 60  # 1 hora
+    rate_limit_retention_seconds: int = 60 * 60 * 24  # 24 horas para expurgo oportunista
+
     # Modo de demonstração
     demo_mode: bool = True
     demo_ttl_hours: int = 24

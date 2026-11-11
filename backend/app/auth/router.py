@@ -12,6 +12,7 @@ from app.auth.service import (
 from app.core.security import (
     CSRF_HEADER_NAME,
     clear_session_cookie,
+    extract_client_ip,
     extract_session_token,
     set_session_cookie,
 )
@@ -28,11 +29,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 def register(
     payload: RegisterRequest,
+    request: Request,
     response: Response,
     session: DbSession,
     user_agent: Annotated[str | None, Header(include_in_schema=False)] = None,
 ) -> AuthResponse:
-    result = register_user(session, payload, user_agent=user_agent)
+    client_ip = extract_client_ip(request)
+    result = register_user(session, payload, client_ip=client_ip, user_agent=user_agent)
     set_session_cookie(response, result.raw_session_token)
     return AuthResponse(
         user=UserResponse.model_validate(result.user),
@@ -49,11 +52,13 @@ def register(
 )
 def login(
     payload: LoginRequest,
+    request: Request,
     response: Response,
     session: DbSession,
     user_agent: Annotated[str | None, Header(include_in_schema=False)] = None,
 ) -> AuthResponse:
-    result = authenticate_user(session, payload, user_agent=user_agent)
+    client_ip = extract_client_ip(request)
+    result = authenticate_user(session, payload, client_ip=client_ip, user_agent=user_agent)
     set_session_cookie(response, result.raw_session_token)
     return AuthResponse(
         user=UserResponse.model_validate(result.user),

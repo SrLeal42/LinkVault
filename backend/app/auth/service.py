@@ -1,5 +1,7 @@
+import math
 import secrets
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -7,15 +9,22 @@ from sqlalchemy import CursorResult, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.models import User, UserSession
+from app.auth.models import AuthAttempt, AuthAttemptScope, User, UserSession
 from app.auth.schemas import LoginRequest, RegisterRequest
 from app.core.config import Settings, get_settings
-from app.core.errors import ConflictError, CSRFError, UnauthorizedError
+from app.core.errors import (
+    ConflictError,
+    CSRFError,
+    RateLimitExceededError,
+    UnauthorizedError,
+    UnprocessableContentError,
+)
 from app.core.security import (
     check_needs_rehash,
     generate_csrf_token,
     generate_session_token,
     hash_password,
+    hash_rate_limit_key,
     hash_session_token,
     normalize_email,
     validate_password_policy,
@@ -45,6 +54,104 @@ def cleanup_expired_sessions(db: Session, *, user_id: uuid.UUID | None = None) -
     if isinstance(result, CursorResult):
         return int(result.rowcount)
     return 0
+
+
+def cleanup_expired_auth_attempts(
+    db: Session,
+    *,
+    now: datetime | None = None,
+    settings: Settings | None = None,
+) -> int:
+    cfg = settings or get_settings()
+    current_time = now or datetime.now(UTC)
+    cutoff = current_time - timedelta(seconds=cfg.rate_limit_retention_seconds)
+    stmt = delete(AuthAttempt).where(AuthAttempt.created_at <= cutoff)
+    result = db.execute(stmt)
+    if isinstance(result, CursorResult):
+        return int(result.rowcount)
+    return 0
+
+
+def check_rate_limit(
+    db: Session,
+    *,
+    scope: AuthAttemptScope,
+    key_hash: str,
+    max_attempts: int,
+    window_seconds: int,
+    only_failures: bool,
+    now: datetime | None = None,
+) -> None:
+    current_time = now or datetime.now(UTC)
+    window_start = current_time - timedelta(seconds=window_seconds)
+
+    stmt = select(
+        func.count(AuthAttempt.id),
+        func.min(AuthAttempt.created_at),
+    ).where(
+        AuthAttempt.scope == scope,
+        AuthAttempt.key_hash == key_hash,
+        AuthAttempt.created_at > window_start,
+    )
+    if only_failures:
+        stmt = stmt.where(AuthAttempt.succeeded.is_(False))
+
+    row = db.execute(stmt).one()
+    attempt_count: int = int(row[0] or 0)
+    oldest_attempt_at: datetime | None = row[1]
+
+    if attempt_count >= max_attempts and oldest_attempt_at is not None:
+        unlock_at = oldest_attempt_at + timedelta(seconds=window_seconds)
+        remaining_seconds = (unlock_at - current_time).total_seconds()
+        retry_after = max(1, math.ceil(remaining_seconds))
+        raise RateLimitExceededError(retry_after=retry_after)
+
+
+def record_auth_attempts(
+    db: Session,
+    *,
+    scope: AuthAttemptScope,
+    key_hashes: Sequence[str],
+    succeeded: bool,
+    now: datetime | None = None,
+) -> None:
+    current_time = now or datetime.now(UTC)
+    for kh in key_hashes:
+        db.add(
+            AuthAttempt(
+                scope=scope,
+                key_hash=kh,
+                succeeded=succeeded,
+                created_at=current_time,
+            )
+        )
+
+
+def enforce_demo_rate_limit(
+    db: Session,
+    *,
+    client_ip: str,
+    now: datetime | None = None,
+    settings: Settings | None = None,
+) -> str:
+    cfg = settings or get_settings()
+    current_time = now or datetime.now(UTC)
+    cleanup_expired_auth_attempts(db, now=current_time, settings=cfg)
+    ip_hash = hash_rate_limit_key("ip", client_ip)
+    try:
+        check_rate_limit(
+            db,
+            scope=AuthAttemptScope.DEMO,
+            key_hash=ip_hash,
+            max_attempts=cfg.rate_limit_demo_ip_max_attempts,
+            window_seconds=cfg.rate_limit_demo_window_seconds,
+            only_failures=False,
+            now=current_time,
+        )
+    except RateLimitExceededError:
+        db.commit()
+        raise
+    return ip_hash
 
 
 def create_user_session(
@@ -83,16 +190,54 @@ def register_user(
     db: Session,
     payload: RegisterRequest,
     *,
+    client_ip: str = "unknown",
     user_agent: str | None = None,
     settings: Settings | None = None,
 ) -> AuthSessionResult:
     cfg = settings or get_settings()
+    now = datetime.now(UTC)
     normalized_email = normalize_email(payload.email)
+    ip_hash = hash_rate_limit_key("ip", client_ip)
 
-    validate_password_policy(payload.password, email=normalized_email, settings=cfg)
+    cleanup_expired_auth_attempts(db, now=now, settings=cfg)
+
+    try:
+        check_rate_limit(
+            db,
+            scope=AuthAttemptScope.REGISTER,
+            key_hash=ip_hash,
+            max_attempts=cfg.rate_limit_register_ip_max_attempts,
+            window_seconds=cfg.rate_limit_register_window_seconds,
+            only_failures=False,
+            now=now,
+        )
+    except RateLimitExceededError:
+        db.commit()
+        raise
+
+    try:
+        validate_password_policy(payload.password, email=normalized_email, settings=cfg)
+    except UnprocessableContentError:
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.REGISTER,
+            key_hashes=(ip_hash,),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
+        raise
 
     existing_user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
     if existing_user is not None:
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.REGISTER,
+            key_hashes=(ip_hash,),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
         raise ConflictError(detail="Este endereço de e-mail já está cadastrado.")
 
     user = User(
@@ -106,7 +251,23 @@ def register_user(
         db.flush()
     except IntegrityError as err:
         db.rollback()
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.REGISTER,
+            key_hashes=(ip_hash,),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
         raise ConflictError(detail="Este endereço de e-mail já está cadastrado.") from err
+
+    record_auth_attempts(
+        db,
+        scope=AuthAttemptScope.REGISTER,
+        key_hashes=(ip_hash,),
+        succeeded=True,
+        now=now,
+    )
 
     user_session, raw_token, csrf_token = create_user_session(
         db,
@@ -128,6 +289,7 @@ def authenticate_user(
     db: Session,
     payload: LoginRequest,
     *,
+    client_ip: str = "unknown",
     user_agent: str | None = None,
     settings: Settings | None = None,
 ) -> AuthSessionResult:
@@ -135,17 +297,69 @@ def authenticate_user(
     normalized_email = normalize_email(payload.email)
     now = datetime.now(UTC)
 
+    ip_hash = hash_rate_limit_key("ip", client_ip)
+    email_hash = hash_rate_limit_key("email", normalized_email)
+
+    cleanup_expired_auth_attempts(db, now=now, settings=cfg)
+
+    try:
+        check_rate_limit(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hash=ip_hash,
+            max_attempts=cfg.rate_limit_login_ip_max_attempts,
+            window_seconds=cfg.rate_limit_login_window_seconds,
+            only_failures=True,
+            now=now,
+        )
+        check_rate_limit(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hash=email_hash,
+            max_attempts=cfg.rate_limit_login_email_max_attempts,
+            window_seconds=cfg.rate_limit_login_window_seconds,
+            only_failures=True,
+            now=now,
+        )
+    except RateLimitExceededError:
+        db.commit()
+        raise
+
     user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
 
     if user is None:
         verify_dummy_password(payload.password, cfg)
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hashes=(ip_hash, email_hash),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
         raise UnauthorizedError(detail=GENERIC_LOGIN_ERROR)
 
     if user.is_demo and user.expires_at is not None and user.expires_at <= now:
         verify_dummy_password(payload.password, cfg)
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hashes=(ip_hash, email_hash),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
         raise UnauthorizedError(detail=GENERIC_LOGIN_ERROR)
 
     if not verify_password(user.password_hash, payload.password, cfg):
+        record_auth_attempts(
+            db,
+            scope=AuthAttemptScope.LOGIN,
+            key_hashes=(ip_hash, email_hash),
+            succeeded=False,
+            now=now,
+        )
+        db.commit()
         raise UnauthorizedError(detail=GENERIC_LOGIN_ERROR)
 
     if check_needs_rehash(user.password_hash, cfg):
@@ -153,6 +367,14 @@ def authenticate_user(
         user.updated_at = now
 
     cleanup_expired_sessions(db, user_id=user.id)
+
+    record_auth_attempts(
+        db,
+        scope=AuthAttemptScope.LOGIN,
+        key_hashes=(ip_hash, email_hash),
+        succeeded=True,
+        now=now,
+    )
 
     user_session, raw_token, csrf_token = create_user_session(
         db,

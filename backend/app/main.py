@@ -26,6 +26,10 @@ def create_app() -> FastAPI:
         },
         409: {"model": ProblemDetail, "description": "Conflito de dados (RFC 9457)"},
         422: {"model": ProblemDetail, "description": "Erro de validação (RFC 9457)"},
+        429: {
+            "model": ProblemDetail,
+            "description": "Limite de requisições excedido (RFC 9457)",
+        },
         500: {"model": ProblemDetail, "description": "Erro interno do servidor (RFC 9457)"},
     }
 

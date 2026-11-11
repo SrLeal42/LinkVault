@@ -1,7 +1,9 @@
 import hashlib
+import ipaddress
 import re
 import secrets
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import urlsplit
 
 from argon2 import PasswordHasher, Type
@@ -290,3 +292,30 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             except AppError as exc:
                 return app_error_handler(request, exc)
         return await call_next(request)
+
+
+RateLimitKeyPrefix = Literal["ip", "email"]
+
+
+def hash_rate_limit_key(prefix: RateLimitKeyPrefix, raw_value: str) -> str:
+    normalized = f"{prefix}:{raw_value.strip().lower()}"
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def extract_client_ip(request: Request, settings: Settings | None = None) -> str:
+    cfg = settings or get_settings()
+    if cfg.trusted_proxy_count > 0:
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            parts = [part.strip() for part in xff.split(",") if part.strip()]
+            if parts:
+                idx = -min(len(parts), cfg.trusted_proxy_count)
+                candidate = parts[idx]
+                try:
+                    return str(ipaddress.ip_address(candidate))
+                except ValueError:
+                    pass
+
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
