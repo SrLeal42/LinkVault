@@ -24,14 +24,15 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 - [x] Implementar a proteção CSRF.
 - [x] Implementar o rate limiting no PostgreSQL.
 - [x] Implementar a alteração de senha.
-- [ ] Implementar usuários demo efêmeros.
-- [ ] Testar autenticação, autorização, CSRF e limites.
+- [x] Implementar usuários demo efêmeros.
+- [x] Testar autenticação, autorização, CSRF e limites.
 
 ### 1.3. Fase 3 — Biblioteca pessoal
 
 - [ ] Implementar o CRUD de links, coleções e tags, com FKs compostas.
 - [ ] Implementar a associação entre links, coleções e tags.
 - [ ] Implementar validação, pesquisa (`pg_trgm`), ordenação e paginação por cursor.
+- [ ] Implementar o seed automático de dados de exemplo (links, coleções e tags) para novos usuários demo em `app/demo`.
 - [ ] Construir a interface principal da biblioteca.
 - [ ] Garantir e testar o isolamento entre usuários.
 

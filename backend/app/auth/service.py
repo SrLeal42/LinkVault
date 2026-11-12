@@ -25,6 +25,7 @@ from app.core.security import (
     check_needs_rehash,
     generate_csrf_token,
     generate_session_token,
+    get_dummy_password_hash,
     hash_password,
     hash_rate_limit_key,
     hash_session_token,
@@ -54,6 +55,23 @@ def cleanup_expired_sessions(db: Session, *, user_id: uuid.UUID | None = None) -
     )
     if user_id is not None:
         stmt = stmt.where(UserSession.user_id == user_id)
+    result = db.execute(stmt)
+    if isinstance(result, CursorResult):
+        return int(result.rowcount)
+    return 0
+
+
+def cleanup_expired_demo_users(
+    db: Session,
+    *,
+    now: datetime | None = None,
+) -> int:
+    current_time = now or datetime.now(UTC)
+    stmt = delete(User).where(
+        User.is_demo.is_(True),
+        User.expires_at.is_not(None),
+        User.expires_at <= current_time,
+    )
     result = db.execute(stmt)
     if isinstance(result, CursorResult):
         return int(result.rowcount)
@@ -388,6 +406,59 @@ def authenticate_user(
     )
     db.commit()
 
+    return AuthSessionResult(
+        user=user,
+        session=user_session,
+        raw_session_token=raw_token,
+        csrf_token=csrf_token,
+    )
+
+
+def create_demo_user_and_session(
+    db: Session,
+    *,
+    client_ip: str = "unknown",
+    user_agent: str | None = None,
+    settings: Settings | None = None,
+) -> AuthSessionResult:
+    cfg = settings or get_settings()
+    if not cfg.demo_mode:
+        raise ForbiddenError(detail="O modo de demonstração está desativado.")
+    now = datetime.now(UTC)
+    ip_hash = enforce_demo_rate_limit(
+        db,
+        client_ip=client_ip,
+        now=now,
+        settings=cfg,
+    )
+    cleanup_expired_demo_users(db, now=now)
+    demo_id = uuid.uuid7()
+    demo_email = f"demo-{demo_id.hex}@demo.linkvault.local"
+    expires_at = now + timedelta(hours=cfg.demo_ttl_hours)
+    user = User(
+        id=demo_id,
+        email=demo_email,
+        password_hash=get_dummy_password_hash(cfg),
+        name="Visitante Demo",
+        is_demo=True,
+        expires_at=expires_at,
+    )
+    db.add(user)
+    db.flush()
+    record_auth_attempts(
+        db,
+        scope=AuthAttemptScope.DEMO,
+        key_hashes=(ip_hash,),
+        succeeded=True,
+        now=now,
+    )
+    user_session, raw_token, csrf_token = create_user_session(
+        db,
+        user=user,
+        user_agent=user_agent,
+        settings=cfg,
+    )
+    db.commit()
     return AuthSessionResult(
         user=user,
         session=user_session,

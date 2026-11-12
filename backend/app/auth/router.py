@@ -13,6 +13,7 @@ from app.auth.schemas import (
 from app.auth.service import (
     authenticate_user,
     change_user_password,
+    create_demo_user_and_session,
     register_user,
     revoke_session_by_token,
 )
@@ -66,6 +67,32 @@ def login(
 ) -> AuthResponse:
     client_ip = extract_client_ip(request)
     result = authenticate_user(session, payload, client_ip=client_ip, user_agent=user_agent)
+    set_session_cookie(response, result.raw_session_token)
+    return AuthResponse(
+        user=UserResponse.model_validate(result.user),
+        csrf_token=result.csrf_token,
+    )
+
+
+@router.post(
+    "/demo",
+    operation_id="create_demo_session",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cria um usuário de demonstração efêmero e inicia uma nova sessão",
+)
+def login_demo(
+    request: Request,
+    response: Response,
+    session: DbSession,
+    user_agent: Annotated[str | None, Header(include_in_schema=False)] = None,
+) -> AuthResponse:
+    client_ip = extract_client_ip(request)
+    result = create_demo_user_and_session(
+        session,
+        client_ip=client_ip,
+        user_agent=user_agent,
+    )
     set_session_cookie(response, result.raw_session_token)
     return AuthResponse(
         user=UserResponse.model_validate(result.user),

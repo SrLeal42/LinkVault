@@ -1,13 +1,36 @@
+import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
 
 from app.auth.router import router as auth_router
+from app.auth.service import cleanup_expired_demo_users
 from app.core.config import get_settings
+from app.core.db import SessionLocal
 from app.core.errors import ProblemDetail, register_exception_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging
 from app.core.security import CSRFMiddleware
 from app.health.router import router as health_router
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    try:
+        with SessionLocal() as session:
+            removed = cleanup_expired_demo_users(session)
+            session.commit()
+            if removed > 0:
+                logger.info(
+                    "startup.demo_cleanup.completed",
+                    extra={"event_data": {"removed_demo_users": removed}},
+                )
+    except Exception:
+        logger.warning("startup.demo_cleanup.failed", exc_info=True)
+    yield
 
 
 def create_app() -> FastAPI:
@@ -36,6 +59,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
+        lifespan=lifespan,
         docs_url="/api/docs" if settings.show_docs else None,
         redoc_url="/api/redoc" if settings.show_docs else None,
         openapi_url="/api/openapi.json" if settings.show_docs else None,
