@@ -29,11 +29,11 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 
 ### 1.3. Fase 3 — Biblioteca pessoal
 
-- [ ] Implementar CRUD e associações da biblioteca (com FKs compostas e isolamento):
+- [x] Implementar CRUD e associações da biblioteca (com FKs compostas e isolamento):
   - [x] **3.1:** Modelos (`Collection`, `Tag`, `Link`, `LinkTag`), constraints compostas, índices (`pg_trgm`/ordenação) e migração Alembic.
   - [x] **3.2:** Domínio `collections` (CRUD básico, contagem de links e dependência de ownership).
   - [x] **3.3:** Domínio `tags` (CRUD, unicidade case-insensitive e `get_or_create` atômico por nomes).
-  - [ ] **3.4:** Domínio `links` (validação de URL `http`/`https`, CRUD básico e associação com coleção e tags por nome).
+  - [x] **3.4:** Domínio `links` (validação de URL `http`/`https`, CRUD básico e associação com coleção e tags por nome).
 - [ ] Implementar validação, pesquisa (`pg_trgm`), ordenação e paginação por cursor.
 - [ ] Implementar o seed automático de dados de exemplo (links, coleções e tags) para novos usuários demo em `app/demo`.
 - [ ] Construir a interface principal da biblioteca.
