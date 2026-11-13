@@ -106,6 +106,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista as coleções do usuário autenticado com a quantidade de links */
+        get: operations["list_collections"];
+        put?: never;
+        /** Cria uma nova coleção privada */
+        post: operations["create_collection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collections/{collection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consulta os detalhes de uma coleção do usuário */
+        get: operations["get_collection"];
+        put?: never;
+        post?: never;
+        /** Exclui uma coleção preservando os links associados */
+        delete: operations["delete_collection"];
+        options?: never;
+        head?: never;
+        /** Atualiza nome e/ou descrição de uma coleção do usuário */
+        patch: operations["update_collection"];
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -166,6 +203,72 @@ export interface components {
              */
             new_password: string;
         };
+        /** CollectionCreateRequest */
+        CollectionCreateRequest: {
+            /**
+             * Description
+             * @description Descrição opcional da coleção.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description Nome da coleção.
+             */
+            name: string;
+        };
+        /** CollectionListResponse */
+        CollectionListResponse: {
+            /** Items */
+            items: components["schemas"]["CollectionResponse"][];
+        };
+        /** CollectionResponse */
+        CollectionResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Link Count
+             * @description Quantidade de links pertencentes à coleção.
+             */
+            link_count: number;
+            /** Name */
+            name: string;
+            /** Public Slug */
+            public_slug: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            visibility: components["schemas"]["CollectionVisibility"];
+        };
+        /** CollectionUpdateRequest */
+        CollectionUpdateRequest: {
+            /**
+             * Description
+             * @description Nova descrição da coleção (null ou vazio remove a descrição).
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description Novo nome da coleção.
+             */
+            name?: string | null;
+        };
+        /**
+         * CollectionVisibility
+         * @enum {string}
+         */
+        CollectionVisibility: "private" | "public";
         /** HealthResponse */
         HealthResponse: {
             /**
@@ -350,6 +453,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Conflito de dados (RFC 9457) */
             409: {
                 headers: {
@@ -430,6 +542,15 @@ export interface operations {
             };
             /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -518,6 +639,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Conflito de dados (RFC 9457) */
             409: {
                 headers: {
@@ -594,6 +724,15 @@ export interface operations {
             };
             /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -688,6 +827,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Conflito de dados (RFC 9457) */
             409: {
                 headers: {
@@ -768,6 +916,487 @@ export interface operations {
             };
             /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflito de dados (RFC 9457) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro de validação (RFC 9457) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro interno do servidor (RFC 9457) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    list_collections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionListResponse"];
+                };
+            };
+            /** @description Requisição inválida (RFC 9457) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Não autenticado ou credenciais inválidas (RFC 9457) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflito de dados (RFC 9457) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro de validação (RFC 9457) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro interno do servidor (RFC 9457) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    create_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"];
+                };
+            };
+            /** @description Requisição inválida (RFC 9457) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Não autenticado ou credenciais inválidas (RFC 9457) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflito de dados (RFC 9457) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro de validação (RFC 9457) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro interno do servidor (RFC 9457) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    get_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"];
+                };
+            };
+            /** @description Requisição inválida (RFC 9457) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Não autenticado ou credenciais inválidas (RFC 9457) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflito de dados (RFC 9457) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro de validação (RFC 9457) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro interno do servidor (RFC 9457) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    delete_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requisição inválida (RFC 9457) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Não autenticado ou credenciais inválidas (RFC 9457) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflito de dados (RFC 9457) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro de validação (RFC 9457) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limite de requisições excedido (RFC 9457) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Erro interno do servidor (RFC 9457) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    update_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"];
+                };
+            };
+            /** @description Requisição inválida (RFC 9457) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Não autenticado ou credenciais inválidas (RFC 9457) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -858,6 +1487,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Conflito de dados (RFC 9457) */
             409: {
                 headers: {
@@ -934,6 +1572,15 @@ export interface operations {
             };
             /** @description Acesso proibido ou CSRF bloqueado (RFC 9457) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso não encontrado (RFC 9457) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

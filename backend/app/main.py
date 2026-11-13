@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from app.auth.router import router as auth_router
 from app.auth.service import cleanup_expired_demo_users
+from app.collections.router import router as collections_router
 from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.core.errors import ProblemDetail, register_exception_handlers
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
             "model": ProblemDetail,
             "description": "Acesso proibido ou CSRF bloqueado (RFC 9457)",
         },
+        404: {"model": ProblemDetail, "description": "Recurso não encontrado (RFC 9457)"},
         409: {"model": ProblemDetail, "description": "Conflito de dados (RFC 9457)"},
         422: {"model": ProblemDetail, "description": "Erro de validação (RFC 9457)"},
         429: {
@@ -72,6 +74,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
+    app.include_router(collections_router, prefix="/api")
 
     return app
 
