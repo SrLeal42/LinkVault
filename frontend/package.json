@@ -28,7 +28,7 @@
   "packageManager": "pnpm@12.16.1",
   "type": "module",
   "dependencies": {
-    "@hookform/resolvers": "^6.0.2",
+    "@hookform/resolvers": "^7.0.5",
     "@tanstack/react-query": "^5.105.0",
     "openapi-fetch": "^0.17.0",
     "radix-ui": "^1.8.1",
