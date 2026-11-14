@@ -1,9 +1,12 @@
-from fastapi import APIRouter, status
+from typing import Annotated
+
+from fastapi import APIRouter, Query, status
 
 from app.auth.dependencies import CurrentUser, DbSession
 from app.links.dependencies import OwnedLink
 from app.links.schemas import (
     LinkCreateRequest,
+    LinkListQueryParams,
     LinkListResponse,
     LinkResponse,
     LinkUpdateRequest,
@@ -24,13 +27,14 @@ router = APIRouter(prefix="/links", tags=["links"])
     operation_id="list_links",
     response_model=LinkListResponse,
     status_code=status.HTTP_200_OK,
-    summary="Lista os links do usuário autenticado",
+    summary="Lista os links do usuário autenticado com pesquisa, filtros, ordenação e paginação",
 )
 def list_links(
+    params: Annotated[LinkListQueryParams, Query()],
     current_user: CurrentUser,
     session: DbSession,
 ) -> LinkListResponse:
-    return list_user_links(session, user_id=current_user.id)
+    return list_user_links(session, user_id=current_user.id, params=params)
 
 
 @router.post(

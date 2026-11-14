@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -8,6 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.tags.schemas import TagResponse, sanitize_tag_name
 
 MAX_TAGS_PER_LINK: int = 30
+DEFAULT_PAGE_LIMIT: int = 20
+MAX_PAGE_LIMIT: int = 100
+MAX_SEARCH_QUERY_LENGTH: int = 200
 
 
 def validate_http_url(value: Any) -> str:
@@ -193,3 +197,59 @@ class LinkResponse(BaseModel):
 class LinkListResponse(BaseModel):
     items: list[LinkResponse]
     next_cursor: str | None = None
+
+
+class LinkSortOption(StrEnum):
+    CREATED_DESC = "created_desc"
+    CREATED_ASC = "created_asc"
+    TITLE_ASC = "title_asc"
+    TITLE_DESC = "title_desc"
+    UPDATED_DESC = "updated_desc"
+
+
+class LinkListQueryParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    q: str | None = Field(
+        default=None,
+        max_length=MAX_SEARCH_QUERY_LENGTH,
+        description="Termo de busca parcial ou por similaridade (pg_trgm) em título e descrição.",
+    )
+    collection_id: uuid.UUID | None = Field(
+        default=None,
+        description="Filtra links pertencentes a uma coleção específica do usuário.",
+    )
+    tag: str | None = Field(
+        default=None,
+        max_length=60,
+        description="Filtra links pelo nome da tag (case-insensitive).",
+    )
+    tag_id: uuid.UUID | None = Field(
+        default=None,
+        description="Filtra links pelo ID da tag.",
+    )
+    sort: LinkSortOption = Field(
+        default=LinkSortOption.CREATED_DESC,
+        description="Critério de ordenação determinística.",
+    )
+    limit: int = Field(
+        default=DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description="Quantidade máxima de itens por página (1 a 100).",
+    )
+    cursor: str | None = Field(
+        default=None,
+        max_length=512,
+        description="Cursor opaco (base64url) retornado na página anterior.",
+    )
+
+    @field_validator("q", "tag", "cursor", mode="before")
+    @classmethod
+    def _strip_optional_query_strings(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("O parâmetro de consulta deve ser um texto.")
+        cleaned = v.strip()
+        return cleaned if cleaned else None

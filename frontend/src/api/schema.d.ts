@@ -167,7 +167,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lista os links do usuário autenticado */
+        /** Lista os links do usuário autenticado com pesquisa, filtros, ordenação e paginação */
         get: operations["list_links"];
         put?: never;
         /** Cria um novo link e associa coleção e tags por nome */
@@ -420,6 +420,11 @@ export interface components {
             /** Url */
             url: string;
         };
+        /**
+         * LinkSortOption
+         * @enum {string}
+         */
+        LinkSortOption: "created_desc" | "created_asc" | "title_asc" | "title_desc" | "updated_desc";
         /** LinkUpdateRequest */
         LinkUpdateRequest: {
             /**
@@ -1748,7 +1753,22 @@ export interface operations {
     };
     list_links: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Termo de busca parcial ou por similaridade (pg_trgm) em título e descrição. */
+                q?: string | null;
+                /** @description Filtra links pertencentes a uma coleção específica do usuário. */
+                collection_id?: string | null;
+                /** @description Filtra links pelo nome da tag (case-insensitive). */
+                tag?: string | null;
+                /** @description Filtra links pelo ID da tag. */
+                tag_id?: string | null;
+                /** @description Critério de ordenação determinística. */
+                sort?: components["schemas"]["LinkSortOption"];
+                /** @description Quantidade máxima de itens por página (1 a 100). */
+                limit?: number;
+                /** @description Cursor opaco (base64url) retornado na página anterior. */
+                cursor?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
