@@ -34,6 +34,7 @@ from app.core.security import (
     verify_dummy_password,
     verify_password,
 )
+from app.demo.service import seed_demo_user_library
 
 GENERIC_LOGIN_ERROR: str = "E-mail ou senha inválidos."
 
@@ -445,6 +446,7 @@ def create_demo_user_and_session(
     )
     db.add(user)
     db.flush()
+    seed_demo_user_library(db, user_id=user.id, now=now)
     record_auth_attempts(
         db,
         scope=AuthAttemptScope.DEMO,

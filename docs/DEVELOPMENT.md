@@ -35,7 +35,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
   - [x] **3.3:** Domínio `tags` (CRUD, unicidade case-insensitive e `get_or_create` atômico por nomes).
   - [x] **3.4:** Domínio `links` (validação de URL `http`/`https`, CRUD básico e associação com coleção e tags por nome).
 - [x] Implementar validação, pesquisa (`pg_trgm`), ordenação e paginação por cursor.
-- [ ] Implementar o seed automático de dados de exemplo (links, coleções e tags) para novos usuários demo em `app/demo`.
+- [x] Implementar o seed automático de dados de exemplo (links, coleções e tags) para novos usuários demo em `app/demo`.
 - [ ] Construir a interface principal da biblioteca.
 - [ ] Garantir e testar o isolamento entre usuários.
 

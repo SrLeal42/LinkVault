@@ -1,14 +1,24 @@
 import hashlib
+import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.auth.models import User, UserSession
 from app.auth.service import cleanup_expired_demo_users
+from app.collections.models import Collection
 from app.core.config import Settings
 from app.core.db import get_db
 from app.core.security import hash_password, hash_session_token
+from app.demo.service import (
+    DEMO_COLLECTIONS,
+    DEMO_LINKS,
+    DEMO_TAG_NAMES,
+    seed_demo_user_library,
+)
+from app.links.models import Link, LinkTag
 from app.main import app
+from app.tags.models import Tag
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -133,7 +143,7 @@ def test_cleanup_expired_demo_users_purges_only_expired_demos_and_cascades_sessi
     db_session.add_all([regular_user, active_demo, expired_demo])
     db_session.flush()
 
-    # Sessão para o demo expirado
+    # Sessão e biblioteca populada para o demo expirado e para o demo ativo
     expired_session = UserSession(
         user_id=expired_demo.id,
         token_hash=hash_session_token("expired_demo_session_raw"),
@@ -145,16 +155,86 @@ def test_cleanup_expired_demo_users_purges_only_expired_demos_and_cascades_sessi
     db_session.flush()
     expired_session_id = expired_session.id
 
+    seed_demo_user_library(db_session, user_id=expired_demo.id, now=now)
+    seed_demo_user_library(db_session, user_id=active_demo.id, now=now)
+
     # Executa a limpeza
     deleted_count = cleanup_expired_demo_users(db_session, now=now)
     assert deleted_count >= 1
 
-    # Verificações de integridade
+    # Verificações de integridade e exclusão em cascata (ON DELETE CASCADE)
     assert db_session.scalar(select(User).where(User.id == regular_user.id)) is not None
     assert db_session.scalar(select(User).where(User.id == active_demo.id)) is not None
     assert db_session.scalar(select(User).where(User.id == expired_demo.id)) is None
     assert (
         db_session.scalar(select(UserSession).where(UserSession.id == expired_session_id)) is None
+    )
+    assert (
+        db_session.scalar(select(Collection).where(Collection.user_id == expired_demo.id)) is None
+    )
+    assert db_session.scalar(select(Tag).where(Tag.user_id == expired_demo.id)) is None
+    assert db_session.scalar(select(Link).where(Link.user_id == expired_demo.id)) is None
+    assert db_session.scalar(select(LinkTag).where(LinkTag.user_id == expired_demo.id)) is None
+
+    # Garante que o acervo do usuário demo ativo permanece intacto
+    assert len(db_session.scalars(select(Link).where(Link.user_id == active_demo.id)).all()) == len(
+        DEMO_LINKS
+    )
+
+
+def test_create_demo_user_seeds_collections_tags_and_links_with_isolation(
+    client: TestClient,
+) -> None:
+    res1 = client.post("/api/auth/demo")
+    assert res1.status_code == 201
+    cookie1 = res1.cookies["linkvault_session"]
+
+    res2 = client.post("/api/auth/demo")
+    assert res2.status_code == 201
+    cookie2 = res2.cookies["linkvault_session"]
+    csrf2 = res2.json()["csrf_token"]
+
+    # Verifica acervo populado para Demo 1 via endpoints da API
+    client.cookies.set("linkvault_session", cookie1)
+
+    cols_res = client.get("/api/collections")
+    assert cols_res.status_code == 200
+    cols = cols_res.json()["items"]
+    assert len(cols) == len(DEMO_COLLECTIONS)
+    assert all(c["visibility"] == "private" and c["public_slug"] is None for c in cols)
+
+    tags_res = client.get("/api/tags")
+    assert tags_res.status_code == 200
+    tags = tags_res.json()["items"]
+    assert {t["name"] for t in tags} == set(DEMO_TAG_NAMES)
+
+    links_res = client.get("/api/links")
+    assert links_res.status_code == 200
+    links = links_res.json()["items"]
+    assert len(links) == len(DEMO_LINKS)
+
+    unassigned_count = sum(1 for item in links if item["collection_id"] is None)
+    assert sum(c["link_count"] for c in cols) + unassigned_count == len(DEMO_LINKS)
+
+    # Pesquisa pg_trgm e filtro por tag funcionam imediatamente sobre o seed
+    search_res = client.get("/api/links", params={"q": "postgreql"})
+    assert search_res.status_code == 200
+    assert len(search_res.json()["items"]) == 1
+
+    tag_filter_res = client.get("/api/links", params={"tag": "python"})
+    assert tag_filter_res.status_code == 200
+    assert len(tag_filter_res.json()["items"]) >= 1
+
+    # Demo 2 não consegue acessar nem excluir links de Demo 1
+    first_link_id = uuid.UUID(str(links[0]["id"]))
+    client.cookies.set("linkvault_session", cookie2)
+    assert client.get(f"/api/links/{first_link_id}").status_code == 404
+    assert (
+        client.delete(
+            f"/api/links/{first_link_id}",
+            headers={"X-CSRF-Token": csrf2},
+        ).status_code
+        == 404
     )
 
 
