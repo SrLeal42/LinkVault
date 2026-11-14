@@ -37,7 +37,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 - [x] Implementar validação, pesquisa (`pg_trgm`), ordenação e paginação por cursor.
 - [x] Implementar o seed automático de dados de exemplo (links, coleções e tags) para novos usuários demo em `app/demo`.
 - [ ] Construir a interface principal da biblioteca:
-  - [ ] **3.5:** Tokens editoriais e fontes (`Archivo`/`IBM Plex Mono`) em `tokens.css`/`global.css`/`index.html`, ícones SVG base, primitivos de UI (`Button`, `FormField`, `ConfirmDialog`, `Toast`, `EmptyState`), parser RFC 9457 (`ProblemDetail`) e testes unitários.
+  - [x] **3.5:** Tokens editoriais e fontes (`Archivo`/`IBM Plex Mono`) em `tokens.css`/`global.css`/`index.html`, ícones SVG base, primitivos de UI (`Button`, `FormField`, `ConfirmDialog`, `Toast`, `EmptyState`), parser RFC 9457 (`ProblemDetail`) e testes unitários.
   - [ ] **3.6:** Contexto de autenticação (`AuthProvider` via `/api/auth/me` + CSRF em memória), `ProtectedRoute` e roteamento base.
   - [ ] **3.7:** Landing page pública editorial (apresentação, prévia do compartilhamento público, pré-aquecimento `/api/health` e botão **Entrar como demo**).
   - [ ] **3.8:** Páginas de Login e Cadastro (`react-hook-form` + `zod`, tratamento de `401`/`409`/`422`/`429` e redirecionamento).

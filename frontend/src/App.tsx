@@ -2,6 +2,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { queryClient } from '@/api/query-client';
 
+import { ToastProvider } from '@/components/ui/toast';
+
 function HomePlaceholder() {
   
     return (
@@ -14,21 +16,15 @@ function HomePlaceholder() {
 }
 
 export function App() {
-  
-    return (
+  return (
     <QueryClientProvider client={queryClient}>
-      
-      <BrowserRouter>
-      
-        <Routes>
-      
-          <Route path="/" element={<HomePlaceholder />} />
-      
-        </Routes>
-      
-      </BrowserRouter>
-
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<HomePlaceholder />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
-
 }

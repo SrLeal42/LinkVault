@@ -1,0 +1,107 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.requiredMark {
+  color: var(--color-accent-strong);
+}
+
+.optionalTag {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-muted-text);
+}
+
+.control {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.control::placeholder {
+  color: var(--color-muted);
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--color-muted-text);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  border-color: var(--color-accent-strong);
+  background-color: var(--color-paper-elevated);
+}
+
+.control:disabled {
+  background-color: var(--color-archive);
+  border-color: var(--color-divider);
+  color: var(--color-muted-text);
+  cursor: not-allowed;
+}
+
+.controlError {
+  border-color: var(--color-danger);
+  background-color: var(--color-danger-surface);
+}
+
+.controlError:hover:not(:disabled),
+.controlError:focus-visible {
+  border-color: var(--color-danger);
+}
+
+.textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.select {
+  cursor: pointer;
+}
+
+.errorText {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-danger);
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
