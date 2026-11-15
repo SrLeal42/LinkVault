@@ -1,0 +1,22 @@
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 12rem;
+  padding: var(--space-8) var(--space-4);
+  background-color: var(--color-paper);
+  color: var(--color-muted-text);
+}
+
+.loadingSpinner {
+  flex-shrink: 0;
+  color: var(--color-accent-strong);
+}
+
+.loadingText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
