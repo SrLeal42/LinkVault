@@ -46,6 +46,9 @@ const { server, restoreRequest } = await vi.hoisted(async () => {
         { status: 401 },
       );
     }),
+    mswHttp.get('*/api/health', () => {
+      return MswHttpResponse.json({ status: 'ok' });
+    }),
   );
 
   mswServer.listen({ onUnhandledFrame: 'error' });
@@ -72,6 +75,7 @@ import {
   type AuthResponse,
   type UserResponse,
 } from '@/features/auth/auth-context';
+import { ToastProvider } from '@/components/ui/toast';
 import { AuthProvider } from '@/features/auth/auth-provider';
 import { GuestRoute, ProtectedRoute } from '@/features/auth/route-guards';
 import { AppRoutes } from '@/routes/app-routes';
@@ -115,9 +119,11 @@ function renderWithAuth(
     queryClient,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={initialEntries}>
-          <AuthProvider>{ui}</AuthProvider>
-        </MemoryRouter>
+        <ToastProvider>
+          <MemoryRouter initialEntries={initialEntries}>
+            <AuthProvider>{ui}</AuthProvider>
+          </MemoryRouter>
+        </ToastProvider>
       </QueryClientProvider>,
     ),
   };
@@ -557,9 +563,12 @@ describe('ProtectedRoute, GuestRoute e AppRoutes', () => {
     });
   });
 
-  it('AppRoutes renderiza HomePlaceholder em /, coleção pública em /c/:slug e 404 editorial', async () => {
+  it('AppRoutes renderiza LandingPage em /, coleção pública em /c/:slug e 404 editorial', async () => {
     renderWithAuth(<AppRoutes />, { initialEntries: ['/'] });
     expect(screen.getByRole('heading', { level: 1, name: 'LinkVault' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Entrar como demo' })).toBeEnabled();
+    });
 
     renderWithAuth(<AppRoutes />, { initialEntries: ['/c/Xk3m9Qp2LwZr7A'] });
     expect(screen.getByRole('heading', { level: 2, name: 'Coleção Compartilhada' })).toBeInTheDocument();

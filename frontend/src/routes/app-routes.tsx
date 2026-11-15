@@ -2,20 +2,15 @@ import type * as React from 'react';
 import { Link, Route, Routes } from 'react-router';
 import { EmptyState } from '@/components/ui/emptystate';
 import { ROUTES } from '@/features/auth/auth-context';
+
 import { GuestRoute, ProtectedRoute } from '@/features/auth/route-guards';
+
+import { LandingPage } from '@/pages/landing-page';
 
 export interface AppRoutesProps {
   enableGuardRedirects?: boolean;
 }
 
-function HomePlaceholder(): React.JSX.Element {
-  return (
-    <main style={{ padding: 'var(--space-8)' }}>
-      <h1>LinkVault</h1>
-      <p>Fundação Fase 1.</p>
-    </main>
-  );
-}
 
 function RoutePlaceholder({
   eyebrow,
@@ -61,7 +56,7 @@ function NotFoundPage(): React.JSX.Element {
 export function AppRoutes({ enableGuardRedirects = false }: AppRoutesProps): React.JSX.Element {
   return (
     <Routes>
-      <Route path={ROUTES.HOME} element={<HomePlaceholder />} />
+      <Route path={ROUTES.HOME} element={<LandingPage />} />
 
       <Route element={<GuestRoute enableRedirect={enableGuardRedirects} />}>
         <Route

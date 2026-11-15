@@ -39,7 +39,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
 - [ ] Construir a interface principal da biblioteca:
   - [x] **3.5:** Tokens editoriais e fontes (`Archivo`/`IBM Plex Mono`) em `tokens.css`/`global.css`/`index.html`, ícones SVG base, primitivos de UI (`Button`, `FormField`, `ConfirmDialog`, `Toast`, `EmptyState`), parser RFC 9457 (`ProblemDetail`) e testes unitários.
   - [x] **3.6:** Contexto de autenticação (`AuthProvider` via `/api/auth/me` + CSRF em memória), `ProtectedRoute` e roteamento base.
-  - [ ] **3.7:** Landing page pública editorial (apresentação, prévia do compartilhamento público, pré-aquecimento `/api/health` e botão **Entrar como demo**).
+  - [x] **3.7:** Landing page pública editorial (apresentação, prévia do compartilhamento público, pré-aquecimento `/api/health` e botão **Entrar como demo**).
   - [ ] **3.8:** Páginas de Login e Cadastro (`react-hook-form` + `zod`, tratamento de `401`/`409`/`422`/`429` e redirecionamento).
   - [ ] **3.9:** Shell autenticado (`AppShell` responsivo), indicador de conta demo, logout e alteração de senha.
   - [ ] **3.10:** Biblioteca — listagem e `LinkCard` (hierarquia editorial, abertura externa separada das ações, metadados em `IBM Plex Mono`), pesquisa (`pg_trgm`), filtros, ordenação, paginação por cursor e estados vazios/carregamento.

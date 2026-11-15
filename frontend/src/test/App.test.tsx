@@ -11,8 +11,9 @@ import {
 
 describe('App Smoke Test', () => {
   it('renderiza o título da aplicação corretamente', () => {
-    render(<App />);
+    const { unmount } = render(<App />);
     expect(screen.getByRole('heading', { level: 1, name: 'LinkVault' })).toBeInTheDocument();
+    unmount();
   });
 });
 
