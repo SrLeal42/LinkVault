@@ -6,6 +6,8 @@ import { ROUTES } from '@/features/auth/auth-context';
 import { GuestRoute, ProtectedRoute } from '@/features/auth/route-guards';
 
 import { LandingPage } from '@/pages/landing-page';
+import { LoginPage } from '@/pages/login-page';
+import { RegisterPage } from '@/pages/register-page';
 
 export interface AppRoutesProps {
   enableGuardRedirects?: boolean;
@@ -53,32 +55,14 @@ function NotFoundPage(): React.JSX.Element {
   );
 }
 
-export function AppRoutes({ enableGuardRedirects = false }: AppRoutesProps): React.JSX.Element {
+export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): React.JSX.Element {
   return (
     <Routes>
       <Route path={ROUTES.HOME} element={<LandingPage />} />
 
       <Route element={<GuestRoute enableRedirect={enableGuardRedirects} />}>
-        <Route
-          path={ROUTES.LOGIN}
-          element={
-            <RoutePlaceholder
-              eyebrow="ACESSO"
-              title="Entrar no LinkVault"
-              description="Página de login reservada para a etapa 3.8."
-            />
-          }
-        />
-        <Route
-          path={ROUTES.REGISTER}
-          element={
-            <RoutePlaceholder
-              eyebrow="CADASTRO"
-              title="Criar conta"
-              description="Página de cadastro reservada para a etapa 3.8."
-            />
-          }
-        />
+        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
       </Route>
 
       <Route element={<ProtectedRoute enableRedirect={enableGuardRedirects} />}>

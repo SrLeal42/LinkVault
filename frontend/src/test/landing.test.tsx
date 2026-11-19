@@ -174,12 +174,30 @@ describe('LandingPage', () => {
     renderLanding();
 
     await waitFor(() => {
-      expect(screen.getByText(REGULAR_USER.email)).toBeInTheDocument();
+      expect(screen.getByText('Leitor Editorial')).toBeInTheDocument();
     });
+    expect(screen.queryByText(REGULAR_USER.email)).not.toBeInTheDocument();
 
     const libraryLinks = screen.getAllByRole('link', { name: /Acessar minha biblioteca/i });
     expect(libraryLinks[0]).toHaveAttribute('href', ROUTES.LIBRARY);
     expect(screen.queryByRole('link', { name: /^Entrar$/i })).not.toBeInTheDocument();
+  });
+
+  it('exibe o e-mail na Home quando o usuário autenticado não possui nome', async () => {
+    server.use(
+      http.get('*/api/auth/me', () => {
+        return HttpResponse.json<AuthResponse>({
+          user: { ...REGULAR_USER, name: null },
+          csrf_token: 'csrf-regular-no-name',
+        });
+      }),
+    );
+
+    renderLanding();
+
+    await waitFor(() => {
+      expect(screen.getByText(REGULAR_USER.email)).toBeInTheDocument();
+    });
   });
 
   it('navega para a prévia da coleção pública ao clicar no exemplo', async () => {

@@ -6,7 +6,7 @@ import { ExternalLinkIcon, PlusIcon, SpinnerIcon } from '@/components/icons/icon
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirmdialog';
 import { EmptyState } from '@/components/ui/emptystate';
-import { FormField, Input, Select, Textarea } from '@/components/ui/formfield';
+import { FormField, Input, PasswordInput, Select, Textarea } from '@/components/ui/formfield';
 import { ToastProvider } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/toast-context';
 
@@ -99,6 +99,30 @@ describe('FormField e Controles', () => {
     expect(screen.getByText('Opcional')).toBeInTheDocument();
     expect(screen.getByLabelText('Notas pessoais').tagName).toBe('TEXTAREA');
     expect(screen.getByLabelText('Ordenação')).toHaveValue('created_desc');
+  });
+
+  it('suporta PasswordInput com alternância acessível de visibilidade', async () => {
+    const user = userEvent.setup();
+    render(
+      <FormField id="user-password" label="Senha" error="Campo obrigatório">
+        <PasswordInput />
+      </FormField>,
+    );
+
+    const input = screen.getByLabelText(/^Senha/i);
+    const toggle = screen.getByRole('button', { name: 'Mostrar senha' });
+
+    expect(input).toHaveAttribute('type', 'password');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(toggle);
+
+    expect(input).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: 'Ocultar senha' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });
 

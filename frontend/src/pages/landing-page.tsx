@@ -81,6 +81,8 @@ export function LandingPage({ warmupOptions }: LandingPageProps = {}): React.JSX
   const [demoErrorMessage, setDemoErrorMessage] = useState<string | null>(null);
 
   const publicPreviewPath = resolvePublicDemoCollectionPath();
+  const trimmedName = user?.name?.trim();
+  const sessionDisplayName = trimmedName && trimmedName.length > 0 ? trimmedName : user?.email;
 
   const handleStartDemo = async (): Promise<void> => {
     if (isStartingDemo || isAuthLoading) {
@@ -124,7 +126,7 @@ export function LandingPage({ warmupOptions }: LandingPageProps = {}): React.JSX
             {isAuthenticated && user ? (
               <>
                 <span className={styles.sessionBadge}>
-                  {user.email}
+                  {sessionDisplayName}
                   {isDemo ? ' · DEMO 24H' : ''}
                 </span>
                 <Link to={ROUTES.LIBRARY} className={styles.linkButtonPrimary}>

@@ -1,7 +1,7 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import type * as React from 'react';
 
-import { AlertCircleIcon } from '@/components/icons/icons';
+import { AlertCircleIcon, EyeIcon, EyeOffIcon } from '@/components/icons/icons';
 
 import styles from './formfield.module.css';
 
@@ -28,6 +28,8 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   hasError?: boolean;
   ref?: React.Ref<HTMLInputElement>;
 }
+
+export type PasswordInputProps = Omit<InputProps, 'type'>;
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   hasError?: boolean;
@@ -234,5 +236,38 @@ export function Select({
     >
       {children}
     </select>
+  );
+}
+
+export function PasswordInput({
+  className,
+  disabled,
+  ref,
+  ...rest
+}: PasswordInputProps): React.JSX.Element {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div className={styles.passwordWrapper}>
+      <Input
+        ref={ref}
+        type={isVisible ? 'text' : 'password'}
+        disabled={disabled}
+        className={[styles.passwordInput, className ?? ''].filter(Boolean).join(' ')}
+        {...rest}
+      />
+      <button
+        type="button"
+        className={styles.passwordToggle}
+        aria-label={isVisible ? 'Ocultar senha' : 'Mostrar senha'}
+        aria-pressed={isVisible}
+        disabled={disabled}
+        onClick={() => {
+          setIsVisible((prev) => !prev);
+        }}
+      >
+        {isVisible ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+      </button>
+    </div>
   );
 }
