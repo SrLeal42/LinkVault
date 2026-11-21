@@ -423,3 +423,249 @@ describe('LibraryPage e LinkCard', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('CRUD de links (LinkFormDialog e ConfirmDialog)', () => {
+  it('valida URL http/https, espaços e título obrigatório no cliente e mapeia erro 422 do servidor', async () => {
+    const createSpy = vi.fn();
+    server.use(
+      http.get('*/api/collections', () => HttpResponse.json({ items: SAMPLE_COLLECTIONS })),
+      http.get('*/api/tags', () => HttpResponse.json({ items: SAMPLE_TAGS })),
+      http.get('*/api/links', () =>
+        HttpResponse.json<LinkListResponse>({ items: [], next_cursor: null }),
+      ),
+      http.post('*/api/links', () => {
+        createSpy();
+        return HttpResponse.json(
+          {
+            type: 'urn:linkvault:error:validation_error',
+            title: 'Erro de validação',
+            status: 422,
+            detail: 'Um ou mais campos enviados são inválidos.',
+            errors: [
+              { field: 'url', message: 'Domínio bloqueado pelo servidor.', code: 'value_error' },
+            ],
+          },
+          { status: 422 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderLibrary([ROUTES.LIBRARY]);
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Sua biblioteca ainda está vazia.' }),
+    ).toBeInTheDocument();
+
+    const addButtons = screen.getAllByRole('button', { name: 'Adicionar link' });
+    const topAddButton = addButtons[0];
+    if (!topAddButton) {
+      throw new Error('Botão Adicionar link não encontrado.');
+    }
+    await user.click(topAddButton);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Adicionar link' });
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar link' }));
+
+    expect(await within(dialog).findByText('Informe a URL de destino.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Informe o título do link.')).toBeInTheDocument();
+    expect(createSpy).not.toHaveBeenCalled();
+
+    const urlInput = within(dialog).getByLabelText(/^URL/i);
+    const titleInput = within(dialog).getByLabelText(/^Título/i);
+
+    await user.type(urlInput, 'javascript:alert(1)');
+    await user.type(titleInput, 'XSS Test');
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar link' }));
+
+    expect(
+      await within(dialog).findByText('A URL deve ser válida e utilizar http:// ou https://.'),
+    ).toBeInTheDocument();
+    expect(createSpy).not.toHaveBeenCalled();
+
+    await user.clear(urlInput);
+    await user.type(urlInput, 'https://exemplo.dev/artigo');
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar link' }));
+
+    expect(
+      await within(dialog).findByText('Domínio bloqueado pelo servidor.'),
+    ).toBeInTheDocument();
+    expect(urlInput).toHaveAttribute('aria-invalid', 'true');
+    expect(createSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('cria link com criação rápida de tags (Enter, sugestão e rascunho pendente), atualiza lista e exibe toast', async () => {
+    let linksStore: LinkResponse[] = [...SAMPLE_LINKS];
+    let capturedCreateBody: unknown = null;
+
+    server.use(
+      http.get('*/api/collections', () => HttpResponse.json({ items: SAMPLE_COLLECTIONS })),
+      http.get('*/api/tags', () => HttpResponse.json({ items: SAMPLE_TAGS })),
+      http.get('*/api/links', () =>
+        HttpResponse.json<LinkListResponse>({ items: linksStore, next_cursor: null }),
+      ),
+      http.post('*/api/links', async ({ request }) => {
+        capturedCreateBody = await request.json();
+        const created: LinkResponse = {
+          id: '01933b2e-dddd-7000-8000-000000000009',
+          collection_id: SAMPLE_COLLECTIONS[0]?.id ?? null,
+          url: 'https://tanstack.com/query/latest',
+          title: 'TanStack Query Docs',
+          description: 'Gerenciamento de estado assíncrono em React.',
+          notes: 'Estudar useInfiniteQuery.',
+          tags: [
+            { id: 't-react', name: 'react', created_at: '2026-11-21T10:00:00Z' },
+            { id: '01933b2e-bbbb-7000-8000-000000000001', name: 'fastapi', created_at: '2026-11-10T10:00:00Z' },
+            { id: 't-cache', name: 'cache', created_at: '2026-11-21T10:00:00Z' },
+          ],
+          created_at: '2026-11-21T10:00:00Z',
+          updated_at: '2026-11-21T10:00:00Z',
+        };
+        linksStore = [created, ...linksStore];
+        return HttpResponse.json<LinkResponse>(created, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderLibrary([ROUTES.LIBRARY]);
+
+    expect(
+      await screen.findByRole('link', { name: 'Documentação Oficial do FastAPI' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Adicionar link' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Adicionar link' });
+
+    await user.type(within(dialog).getByLabelText(/^URL/i), 'https://tanstack.com/query/latest');
+    await user.type(within(dialog).getByLabelText(/^Título/i), 'TanStack Query Docs');
+    await user.type(
+      within(dialog).getByLabelText(/^Descrição/i),
+      'Gerenciamento de estado assíncrono em React.',
+    );
+    await user.type(within(dialog).getByLabelText(/^Notas pessoais/i), 'Estudar useInfiniteQuery.');
+    await user.selectOptions(
+      within(dialog).getByLabelText(/^Coleção/i),
+      SAMPLE_COLLECTIONS[0]?.id ?? '',
+    );
+
+    // 1. Cria tag rápida com Enter (e ignora duplicata case-insensitive)
+    const tagsInput = within(dialog).getByLabelText(/^Tags/i);
+    await user.type(tagsInput, 'react{Enter}');
+    await user.type(tagsInput, '#REACT{Enter}');
+    expect(within(dialog).getByRole('button', { name: 'Remover tag react' })).toBeInTheDocument();
+
+    // 2. Seleciona tag existente com 1 clique
+    await user.click(within(dialog).getByRole('button', { name: 'Associar tag fastapi' }));
+
+    // 3. Deixa uma tag pendente no input e submete diretamente
+    await user.type(tagsInput, 'cache');
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar link' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Adicionar link' })).not.toBeInTheDocument();
+    });
+
+    expect(capturedCreateBody).toEqual({
+      url: 'https://tanstack.com/query/latest',
+      title: 'TanStack Query Docs',
+      description: 'Gerenciamento de estado assíncrono em React.',
+      notes: 'Estudar useInfiniteQuery.',
+      collection_id: SAMPLE_COLLECTIONS[0]?.id ?? null,
+      tags: ['react', 'fastapi', 'cache'],
+    });
+
+    expect(await screen.findByRole('link', { name: 'TanStack Query Docs' })).toBeInTheDocument();
+    const toastRegion = screen.getByRole('region', { name: /Notificações/i });
+    expect(within(toastRegion).getByText('Link criado com sucesso.')).toBeInTheDocument();
+  });
+
+  it('edita link existente (PATCH) removendo e adicionando tags e exclui link após ConfirmDialog (DELETE)', async () => {
+    let linksStore: LinkResponse[] = [...SAMPLE_LINKS];
+    let capturedPatchBody: unknown = null;
+    let deletedLinkId: string | null = null;
+
+    server.use(
+      http.get('*/api/collections', () => HttpResponse.json({ items: SAMPLE_COLLECTIONS })),
+      http.get('*/api/tags', () => HttpResponse.json({ items: SAMPLE_TAGS })),
+      http.get('*/api/links', () =>
+        HttpResponse.json<LinkListResponse>({ items: linksStore, next_cursor: null }),
+      ),
+      http.patch('*/api/links/:linkId', async ({ params, request }) => {
+        capturedPatchBody = await request.json();
+        const existing = linksStore.find((item) => item.id === params.linkId);
+        if (!existing) {
+          return HttpResponse.json({ detail: 'Not found' }, { status: 404 });
+        }
+        const updated: LinkResponse = {
+          ...existing,
+          title: 'FastAPI Guia Atualizado',
+          tags: [{ id: 't-api', name: 'api', created_at: '2026-11-21T12:00:00Z' }],
+          updated_at: '2026-11-21T12:00:00Z',
+        };
+        linksStore = linksStore.map((item) => (item.id === updated.id ? updated : item));
+        return HttpResponse.json<LinkResponse>(updated);
+      }),
+      http.delete('*/api/links/:linkId', ({ params }) => {
+        deletedLinkId = String(params.linkId);
+        linksStore = linksStore.filter((item) => item.id !== params.linkId);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderLibrary([ROUTES.LIBRARY]);
+
+    expect(
+      await screen.findByRole('link', { name: 'Documentação Oficial do FastAPI' }),
+    ).toBeInTheDocument();
+
+    // Edição
+    await user.click(
+      screen.getByRole('button', { name: 'Editar Documentação Oficial do FastAPI' }),
+    );
+    const editDialog = await screen.findByRole('dialog', { name: 'Editar link' });
+
+    const titleInput = within(editDialog).getByLabelText(/^Título/i);
+    expect(titleInput).toHaveValue('Documentação Oficial do FastAPI');
+
+    await user.clear(titleInput);
+    await user.type(titleInput, 'FastAPI Guia Atualizado');
+    await user.click(within(editDialog).getByRole('button', { name: 'Remover tag fastapi' }));
+    await user.type(within(editDialog).getByLabelText(/^Tags/i), 'api');
+    await user.click(within(editDialog).getByRole('button', { name: 'Adicionar' }));
+    await user.click(within(editDialog).getByRole('button', { name: 'Salvar alterações' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Editar link' })).not.toBeInTheDocument();
+    });
+
+    expect(capturedPatchBody).toMatchObject({
+      title: 'FastAPI Guia Atualizado',
+      tags: ['api'],
+    });
+    expect(
+      await screen.findByRole('link', { name: 'FastAPI Guia Atualizado' }),
+    ).toBeInTheDocument();
+
+    // Exclusão com ConfirmDialog
+    await user.click(screen.getByRole('button', { name: 'Excluir FastAPI Guia Atualizado' }));
+    const confirmDialog = await screen.findByRole('alertdialog', { name: 'Excluir link?' });
+    expect(within(confirmDialog).getByText(/FastAPI Guia Atualizado/)).toBeInTheDocument();
+
+    await user.click(within(confirmDialog).getByRole('button', { name: 'Excluir link' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog', { name: 'Excluir link?' })).not.toBeInTheDocument();
+    });
+
+    expect(deletedLinkId).toBe(SAMPLE_LINKS[0]?.id);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('link', { name: 'FastAPI Guia Atualizado' }),
+      ).not.toBeInTheDocument();
+    });
+
+    const toastRegion = screen.getByRole('region', { name: /Notificações/i });
+    expect(within(toastRegion).getByText('Link excluído.')).toBeInTheDocument();
+  });
+});

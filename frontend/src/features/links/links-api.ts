@@ -3,6 +3,8 @@ import { parseApiError, type ApiErrorKind, type ParsedApiError } from '@/api/err
 
 export type LinkResponse = ApiComponents['schemas']['LinkResponse'];
 export type LinkListResponse = ApiComponents['schemas']['LinkListResponse'];
+export type LinkCreateRequest = ApiComponents['schemas']['LinkCreateRequest'];
+export type LinkUpdateRequest = ApiComponents['schemas']['LinkUpdateRequest'];
 export type LinkSortOption = ApiComponents['schemas']['LinkSortOption'];
 export type CollectionResponse = ApiComponents['schemas']['CollectionResponse'];
 export type CollectionListResponse = ApiComponents['schemas']['CollectionListResponse'];
@@ -264,4 +266,55 @@ export async function fetchUserTags(signal?: AbortSignal): Promise<TagResponse[]
   }
 
   return result.data.items;
+}
+
+export async function createLink(payload: LinkCreateRequest): Promise<LinkResponse> {
+  let result: { data?: LinkResponse; error?: unknown; response: Response };
+  try {
+    result = await apiClient.POST('/api/links', { body: payload });
+  } catch (caught) {
+    throw new LinksRequestError(parseApiError(caught));
+  }
+
+  if (!result.response.ok || !result.data) {
+    throw new LinksRequestError(parseApiError(result.error, result.response));
+  }
+
+  return result.data;
+}
+
+export async function updateLink(
+  linkId: string,
+  payload: LinkUpdateRequest,
+): Promise<LinkResponse> {
+  let result: { data?: LinkResponse; error?: unknown; response: Response };
+  try {
+    result = await apiClient.PATCH('/api/links/{link_id}', {
+      params: { path: { link_id: linkId } },
+      body: payload,
+    });
+  } catch (caught) {
+    throw new LinksRequestError(parseApiError(caught));
+  }
+
+  if (!result.response.ok || !result.data) {
+    throw new LinksRequestError(parseApiError(result.error, result.response));
+  }
+
+  return result.data;
+}
+
+export async function deleteLink(linkId: string): Promise<void> {
+  let result: { error?: unknown; response: Response };
+  try {
+    result = await apiClient.DELETE('/api/links/{link_id}', {
+      params: { path: { link_id: linkId } },
+    });
+  } catch (caught) {
+    throw new LinksRequestError(parseApiError(caught));
+  }
+
+  if (!result.response.ok) {
+    throw new LinksRequestError(parseApiError(result.error, result.response));
+  }
 }

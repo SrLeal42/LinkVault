@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import type * as React from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 import { parseApiError } from '@/api/errors';
 import { AlertCircleIcon, CloseIcon, PlusIcon, SearchIcon } from '@/components/icons/icons';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirmdialog';
 import { EmptyState } from '@/components/ui/emptystate';
 import { FormField, Input, Select } from '@/components/ui/formfield';
+import { useToast } from '@/components/ui/toast-context';
 import { LinkCard } from '@/features/links/link-card';
+import { LinkFormDialog } from '@/features/links/link-form-dialog';
 import {
   COLLECTIONS_LIST_QUERY_KEY,
   DEFAULT_LINKS_PAGE_LIMIT,
+  LINKS_QUERY_KEY_PREFIX,
   LINK_SORT_OPTIONS,
   TAGS_LIST_QUERY_KEY,
   buildLibrarySearchParams,
   buildLinksListQueryKey,
+  deleteLink,
   fetchLinksPage,
   fetchUserCollections,
   fetchUserTags,
@@ -39,8 +44,15 @@ export function LibraryPage({
   onEditLink,
   onDeleteLink,
 }: LibraryPageProps = {}): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => parseLibrarySearchParams(searchParams), [searchParams]);
+
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingLink, setEditingLink] = useState<LinkResponse | null>(null);
+  const [deletingLink, setDeletingLink] = useState<LinkResponse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [searchDraft, setSearchDraft] = useState<{
     baseUrlQuery: string;
@@ -151,6 +163,71 @@ export function LibraryPage({
     updateFilters({ collectionId: isSameCollection ? '' : collectionId });
   };
 
+  const invalidateLibraryCaches = async (): Promise<void> => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: LINKS_QUERY_KEY_PREFIX }),
+      queryClient.invalidateQueries({ queryKey: TAGS_LIST_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: COLLECTIONS_LIST_QUERY_KEY }),
+    ]);
+  };
+
+  const handleOpenCreate = (): void => {
+    if (onAddLink) {
+      onAddLink();
+      return;
+    }
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleOpenEdit = (link: LinkResponse): void => {
+    if (onEditLink) {
+      onEditLink(link);
+      return;
+    }
+    setEditingLink(link);
+  };
+
+  const handleOpenDelete = (link: LinkResponse): void => {
+    if (onDeleteLink) {
+      onDeleteLink(link);
+      return;
+    }
+    setDeletingLink(link);
+  };
+
+  const handleLinkSaved = (_savedLink: LinkResponse, mode: 'create' | 'update'): void => {
+    void invalidateLibraryCaches();
+    toast({
+      title: mode === 'create' ? 'Link criado com sucesso.' : 'Link atualizado com sucesso.',
+      variant: 'success',
+    });
+  };
+
+  const handleConfirmDelete = async (): Promise<void> => {
+    if (!deletingLink || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteLink(deletingLink.id);
+      setDeletingLink(null);
+      await invalidateLibraryCaches();
+      toast({
+        title: 'Link excluído.',
+        variant: 'default',
+      });
+    } catch (error: unknown) {
+      toast({
+        title: 'Não foi possível excluir o link.',
+        description: parseApiError(error).userMessage,
+        variant: 'error',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const errorMessage = linksQuery.isError ? parseApiError(linksQuery.error).userMessage : null;
   const loadedCountLabel =
     allLinks.length === 1 ? '001 REFERÊNCIA' : `${String(allLinks.length).padStart(3, '0')} REFERÊNCIAS`;
@@ -166,9 +243,7 @@ export function LibraryPage({
           type="button"
           variant="primary"
           leftIcon={<PlusIcon size={16} />}
-          onClick={() => {
-            onAddLink?.();
-          }}
+          onClick={handleOpenCreate}
         >
           Adicionar link
         </Button>
@@ -332,9 +407,7 @@ export function LibraryPage({
                 type="button"
                 variant="primary"
                 leftIcon={<PlusIcon size={16} />}
-                onClick={() => {
-                  onAddLink?.();
-                }}
+                onClick={handleOpenCreate}
               >
                 Adicionar link
               </Button>
@@ -356,8 +429,8 @@ export function LibraryPage({
                   sort={filters.sort}
                   onSelectTag={handleToggleTag}
                   onSelectCollection={handleToggleCollection}
-                  onEdit={onEditLink}
-                  onDelete={onDeleteLink}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleOpenDelete}
                 />
               </li>
             ))}
@@ -385,6 +458,41 @@ export function LibraryPage({
           </footer>
         </>
       )}
+
+      <LinkFormDialog
+        open={isCreateDialogOpen || editingLink !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setIsCreateDialogOpen(false);
+            setEditingLink(null);
+          }
+        }}
+        link={editingLink}
+        defaultCollectionId={filters.collectionId}
+        collections={collections}
+        availableTags={tags}
+        onSuccess={handleLinkSaved}
+      />
+
+      <ConfirmDialog
+        open={deletingLink !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setDeletingLink(null);
+          }
+        }}
+        title="Excluir link?"
+        description={
+          deletingLink
+            ? `Tem certeza de que deseja excluir "${deletingLink.title}" da sua biblioteca?`
+            : 'Tem certeza de que deseja excluir este link?'
+        }
+        consequence="Esta ação é permanente e não poderá ser desfeita."
+        confirmLabel="Excluir link"
+        tone="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
