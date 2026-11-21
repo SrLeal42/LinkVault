@@ -42,6 +42,15 @@ const { server, restoreRequest } = await vi.hoisted(async () => {
     mswHttp.get('*/api/health', () => {
       return MswHttpResponse.json({ status: 'ok' });
     }),
+    mswHttp.get('*/api/links', () => {
+      return MswHttpResponse.json({ items: [], next_cursor: null });
+    }),
+    mswHttp.get('*/api/collections', () => {
+      return MswHttpResponse.json({ items: [] });
+    }),
+    mswHttp.get('*/api/tags', () => {
+      return MswHttpResponse.json({ items: [] });
+    }),
   );
 
   mswServer.listen({ onUnhandledFrame: 'error' });

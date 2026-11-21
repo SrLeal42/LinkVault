@@ -7,6 +7,7 @@ import { ROUTES } from '@/features/auth/auth-context';
 import { GuestRoute, ProtectedRoute } from '@/features/auth/route-guards';
 
 import { LandingPage } from '@/pages/landing-page';
+import { LibraryPage } from '@/pages/library-page';
 import { LoginPage } from '@/pages/login-page';
 import { RegisterPage } from '@/pages/register-page';
 
@@ -75,17 +76,8 @@ export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): Reac
       <Route element={<ProtectedRoute enableRedirect={enableGuardRedirects} />}>
         
         <Route element={<AppShell />}>
-        
-          <Route
-            path={ROUTES.LIBRARY}
-            element={
-              <RoutePlaceholder
-                eyebrow="BIBLIOTECA"
-                title="Minha Biblioteca"
-                description="Listagem e pesquisa de links reservadas para as etapas 3.10–3.11."
-              />
-            }
-          />
+          
+          <Route path={ROUTES.LIBRARY} element={<LibraryPage />} />
         
           <Route
             path={ROUTES.COLLECTIONS}
