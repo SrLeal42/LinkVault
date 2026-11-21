@@ -26,12 +26,17 @@ export interface RedirectLocationState {
   from?: string;
 }
 
+export interface LogoutOptions {
+  redirectTo?: string;
+}
+
 export interface AuthContextValue {
   user: UserResponse | null;
   status: AuthStatus;
   isLoading: boolean;
   isAuthenticated: boolean;
   isDemo: boolean;
+  logoutRedirectPath: string | null;
   applyAuthSession: (session: AuthResponse) => void;
   clearAuthSession: () => void;
   refreshSession: () => Promise<UserResponse | null>;
@@ -39,9 +44,8 @@ export interface AuthContextValue {
   register: (payload: RegisterRequest) => Promise<UserResponse>;
   loginDemo: () => Promise<UserResponse>;
   changePassword: (payload: ChangePasswordRequest) => Promise<UserResponse>;
-  logout: () => Promise<void>;
+  logout: (options?: LogoutOptions) => Promise<void>;
 }
-
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth(): AuthContextValue {

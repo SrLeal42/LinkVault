@@ -222,3 +222,20 @@ export function EyeOffIcon(props: IconProps): React.JSX.Element {
     </SvgIcon>
   );
 }
+
+export function BookmarkIcon(props: IconProps): React.JSX.Element {
+  return (
+    <SvgIcon {...props}>
+      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </SvgIcon>
+  );
+}
+
+export function ChevronsUpDownIcon(props: IconProps): React.JSX.Element {
+  return (
+    <SvgIcon {...props}>
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
+    </SvgIcon>
+  );
+}

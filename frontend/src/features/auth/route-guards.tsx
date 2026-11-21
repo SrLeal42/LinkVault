@@ -44,7 +44,7 @@ export function ProtectedRoute({
   enableRedirect = true,
   unauthenticatedFallback,
 }: ProtectedRouteProps): React.JSX.Element {
-  const { status, isAuthenticated } = useAuth();
+  const { status, isAuthenticated, logoutRedirectPath } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
@@ -54,6 +54,9 @@ export function ProtectedRoute({
   if (!isAuthenticated) {
     if (!enableRedirect) {
       return <>{unauthenticatedFallback ?? children ?? <Outlet />}</>;
+    }
+    if (logoutRedirectPath) {
+      return <Navigate to={logoutRedirectPath} replace />;
     }
     const from = `${location.pathname}${location.search}`;
     return <Navigate to={redirectTo} state={{ from } satisfies RedirectLocationState} replace />;

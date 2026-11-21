@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router';
 import {
   apiClient,
   setCsrfToken,
@@ -16,6 +17,7 @@ import {
   type AuthStatus,
   type ChangePasswordRequest,
   type LoginRequest,
+  type LogoutOptions,
   type RegisterRequest,
   type UserResponse,
 } from './auth-context';
@@ -98,6 +100,12 @@ async function executeAuthMutation(run: () => Promise<AuthApiResult>): Promise<A
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  
+  const [logoutRedirect, setLogoutRedirect] = useState<{
+    target: string;
+    sourceKey: string;
+  } | null>(null);
 
   const applyAuthSession = useCallback(
     (session: AuthResponse): void => {
@@ -108,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
           predicate: (query) => query.queryKey[0] !== AUTH_ME_QUERY_KEY[0],
         });
       }
+      setLogoutRedirect(null);
       setCsrfToken(session.csrf_token);
       queryClient.setQueryData<UserResponse | null>(AUTH_ME_QUERY_KEY, session.user);
     },
@@ -190,16 +199,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     },
     [applyAuthSession],
   );
-
-  const logout = useCallback(async (): Promise<void> => {
-    try {
-      await apiClient.POST('/api/auth/logout');
-    } catch {
-      // Mesmo em falha de rede, a sessão local e o CSRF devem ser descartados.
-    } finally {
-      clearAuthSession();
-    }
-  }, [clearAuthSession]);
+  
+  const logout = useCallback(
+    async (options?: LogoutOptions): Promise<void> => {
+      try {
+        await apiClient.POST('/api/auth/logout');
+      } catch {
+        // Mesmo em falha de rede, a sessão local e o CSRF devem ser descartados.
+      } finally {
+        setLogoutRedirect(
+          options?.redirectTo ? { target: options.redirectTo, sourceKey: location.key } : null,
+        );
+        clearAuthSession();
+      }
+    },
+    [clearAuthSession, location.key],
+  );
 
   const user = meQuery.data ?? null;
   const status: AuthStatus = meQuery.isPending
@@ -210,14 +225,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const isLoading = status === 'loading';
   const isAuthenticated = status === 'authenticated';
   const isDemo = Boolean(user?.is_demo);
+  const logoutRedirectPath =
+    logoutRedirect?.sourceKey === location.key && logoutRedirect.target !== location.pathname
+      ? logoutRedirect.target
+      : null;
 
-  const value = useMemo<AuthContextValue>(
+const value = useMemo<AuthContextValue>(
     () => ({
       user,
       status,
       isLoading,
       isAuthenticated,
       isDemo,
+      logoutRedirectPath,
       applyAuthSession,
       clearAuthSession,
       refreshSession,
@@ -233,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       isLoading,
       isAuthenticated,
       isDemo,
+      logoutRedirectPath,
       applyAuthSession,
       clearAuthSession,
       refreshSession,

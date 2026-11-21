@@ -1,5 +1,6 @@
 import type * as React from 'react';
 import { Link, Route, Routes } from 'react-router';
+import { AppShell } from '@/components/layout/app-shell';
 import { EmptyState } from '@/components/ui/emptystate';
 import { ROUTES } from '@/features/auth/auth-context';
 
@@ -18,16 +19,22 @@ function RoutePlaceholder({
   eyebrow,
   title,
   description,
+  standalone = false,
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  standalone?: boolean;
 }): React.JSX.Element {
-  return (
-    <main style={{ padding: 'var(--space-8)', maxWidth: '42rem', margin: '0 auto' }}>
-      <EmptyState eyebrow={eyebrow} title={title} description={description} />
-    </main>
-  );
+  const content = <EmptyState eyebrow={eyebrow} title={title} description={description} />;
+  if (standalone) {
+    return (
+      <main style={{ padding: 'var(--space-8)', maxWidth: '42rem', margin: '0 auto' }}>
+        {content}
+      </main>
+    );
+  }
+  return <div style={{ maxWidth: '42rem' }}>{content}</div>;
 }
 
 function NotFoundPage(): React.JSX.Element {
@@ -66,46 +73,55 @@ export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): Reac
       </Route>
 
       <Route element={<ProtectedRoute enableRedirect={enableGuardRedirects} />}>
-        <Route
-          path={ROUTES.LIBRARY}
-          element={
-            <RoutePlaceholder
-              eyebrow="BIBLIOTECA"
-              title="Minha Biblioteca"
-              description="Listagem e pesquisa de links reservadas para as etapas 3.9–3.11."
-            />
-          }
-        />
-        <Route
-          path={ROUTES.COLLECTIONS}
-          element={
-            <RoutePlaceholder
-              eyebrow="COLEÇÕES"
-              title="Minhas Coleções"
-              description="Gerenciamento de coleções reservado para a etapa 3.12."
-            />
-          }
-        />
-        <Route
-          path={ROUTES.COLLECTION_DETAIL}
-          element={
-            <RoutePlaceholder
-              eyebrow="COLEÇÃO"
-              title="Detalhes da Coleção"
-              description="Visualização contextual de coleção reservada para a etapa 3.12."
-            />
-          }
-        />
-        <Route
-          path={ROUTES.TAGS}
-          element={
-            <RoutePlaceholder
-              eyebrow="TAGS"
-              title="Gerenciar Tags"
-              description="Catálogo de tags reservado para a etapa 3.13."
-            />
-          }
-        />
+        
+        <Route element={<AppShell />}>
+        
+          <Route
+            path={ROUTES.LIBRARY}
+            element={
+              <RoutePlaceholder
+                eyebrow="BIBLIOTECA"
+                title="Minha Biblioteca"
+                description="Listagem e pesquisa de links reservadas para as etapas 3.10–3.11."
+              />
+            }
+          />
+        
+          <Route
+            path={ROUTES.COLLECTIONS}
+            element={
+              <RoutePlaceholder
+                eyebrow="COLEÇÕES"
+                title="Minhas Coleções"
+                description="Gerenciamento de coleções reservado para a etapa 3.12."
+              />
+            }
+          />
+        
+          <Route
+            path={ROUTES.COLLECTION_DETAIL}
+            element={
+              <RoutePlaceholder
+                eyebrow="COLEÇÃO"
+                title="Detalhes da Coleção"
+                description="Visualização contextual de coleção reservada para a etapa 3.12."
+              />
+            }
+          />
+        
+          <Route
+            path={ROUTES.TAGS}
+            element={
+              <RoutePlaceholder
+                eyebrow="TAGS"
+                title="Gerenciar Tags"
+                description="Catálogo de tags reservado para a etapa 3.13."
+              />
+            }
+          />
+        
+        </Route>
+      
       </Route>
 
       <Route
@@ -115,6 +131,7 @@ export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): Reac
             eyebrow="COLEÇÃO PÚBLICA"
             title="Coleção Compartilhada"
             description="Visualização pública somente leitura reservada para a Fase 4."
+            standalone
           />
         }
       />
