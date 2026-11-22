@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type * as React from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { parseApiError } from '@/api/errors';
 import { AlertCircleIcon, CloseIcon, PlusIcon, SearchIcon } from '@/components/icons/icons';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/confirmdialog';
 import { EmptyState } from '@/components/ui/emptystate';
 import { FormField, Input, Select } from '@/components/ui/formfield';
 import { useToast } from '@/components/ui/toast-context';
+import { buildCollectionDetailPath } from '@/features/collections/collections-api';
 import { LinkCard } from '@/features/links/link-card';
 import { LinkFormDialog } from '@/features/links/link-form-dialog';
 import {
@@ -45,6 +46,7 @@ export function LibraryPage({
   onDeleteLink,
 }: LibraryPageProps = {}): React.JSX.Element {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => parseLibrarySearchParams(searchParams), [searchParams]);
@@ -158,9 +160,11 @@ export function LibraryPage({
     updateFilters({ tag: isSameTag ? '' : tagName });
   };
 
-  const handleToggleCollection = (collectionId: string): void => {
-    const isSameCollection = filters.collectionId === collectionId;
-    updateFilters({ collectionId: isSameCollection ? '' : collectionId });
+  const handleOpenCollection = (targetCollectionId: string): void => {
+    if (!targetCollectionId) {
+      return;
+    }
+    void navigate(buildCollectionDetailPath(targetCollectionId));
   };
 
   const invalidateLibraryCaches = async (): Promise<void> => {
@@ -428,7 +432,7 @@ export function LibraryPage({
                   activeCollectionId={filters.collectionId}
                   sort={filters.sort}
                   onSelectTag={handleToggleTag}
-                  onSelectCollection={handleToggleCollection}
+                  onSelectCollection={handleOpenCollection}
                   onEdit={handleOpenEdit}
                   onDelete={handleOpenDelete}
                 />

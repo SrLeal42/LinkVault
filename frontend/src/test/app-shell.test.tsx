@@ -48,6 +48,18 @@ const { server, restoreRequest } = await vi.hoisted(async () => {
     mswHttp.get('*/api/collections', () => {
       return MswHttpResponse.json({ items: [] });
     }),
+    mswHttp.get('*/api/collections/:collectionId', ({ params }) => {
+      return MswHttpResponse.json({
+        id: String(params.collectionId),
+        name: 'Detalhes da Coleção',
+        description: null,
+        visibility: 'private',
+        public_slug: null,
+        link_count: 0,
+        created_at: '2026-11-10T10:00:00Z',
+        updated_at: '2026-11-10T10:00:00Z',
+      });
+    }),
     mswHttp.get('*/api/tags', () => {
       return MswHttpResponse.json({ items: [] });
     }),

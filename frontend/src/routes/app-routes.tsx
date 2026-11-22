@@ -1,20 +1,63 @@
+import { Suspense, lazy } from 'react';
 import type * as React from 'react';
 import { Link, Route, Routes } from 'react-router';
-import { AppShell } from '@/components/layout/app-shell';
+import { SpinnerIcon } from '@/components/icons/icons';
 import { EmptyState } from '@/components/ui/emptystate';
 import { ROUTES } from '@/features/auth/auth-context';
 
 import { GuestRoute, ProtectedRoute } from '@/features/auth/route-guards';
 
 import { LandingPage } from '@/pages/landing-page';
-import { LibraryPage } from '@/pages/library-page';
-import { LoginPage } from '@/pages/login-page';
-import { RegisterPage } from '@/pages/register-page';
+
+const AppShell = lazy(() =>
+  import('@/components/layout/app-shell').then((module) => ({ default: module.AppShell })),
+);
+const LoginPage = lazy(() =>
+  import('@/pages/login-page').then((module) => ({ default: module.LoginPage })),
+);
+const RegisterPage = lazy(() =>
+  import('@/pages/register-page').then((module) => ({ default: module.RegisterPage })),
+);
+const LibraryPage = lazy(() =>
+  import('@/pages/library-page').then((module) => ({ default: module.LibraryPage })),
+);
+const CollectionsPage = lazy(() =>
+  import('@/pages/collections-page').then((module) => ({ default: module.CollectionsPage })),
+);
+const CollectionDetailPage = lazy(() =>
+  import('@/pages/collection-detail-page').then((module) => ({
+    default: module.CollectionDetailPage,
+  })),
+);
 
 export interface AppRoutesProps {
   enableGuardRedirects?: boolean;
 }
 
+function RouteLoadingFallback(): React.JSX.Element {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Carregando página"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 'var(--space-3)',
+        minHeight: '12rem',
+        padding: 'var(--space-8) var(--space-4)',
+        color: 'var(--color-muted-text)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-xs)',
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+      }}
+    >
+      <SpinnerIcon size={18} style={{ color: 'var(--color-accent-strong)' }} />
+      <span>Carregando...</span>
+    </div>
+  );
+}
 
 function RoutePlaceholder({
   eyebrow,
@@ -65,6 +108,7 @@ function NotFoundPage(): React.JSX.Element {
 
 export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): React.JSX.Element {
   return (
+    <Suspense fallback={<RouteLoadingFallback />}>
     <Routes>
       <Route path={ROUTES.HOME} element={<LandingPage />} />
 
@@ -79,27 +123,9 @@ export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): Reac
           
           <Route path={ROUTES.LIBRARY} element={<LibraryPage />} />
         
-          <Route
-            path={ROUTES.COLLECTIONS}
-            element={
-              <RoutePlaceholder
-                eyebrow="COLEÇÕES"
-                title="Minhas Coleções"
-                description="Gerenciamento de coleções reservado para a etapa 3.12."
-              />
-            }
-          />
-        
-          <Route
-            path={ROUTES.COLLECTION_DETAIL}
-            element={
-              <RoutePlaceholder
-                eyebrow="COLEÇÃO"
-                title="Detalhes da Coleção"
-                description="Visualização contextual de coleção reservada para a etapa 3.12."
-              />
-            }
-          />
+          <Route path={ROUTES.COLLECTIONS} element={<CollectionsPage />} />
+          
+          <Route path={ROUTES.COLLECTION_DETAIL} element={<CollectionDetailPage />} />
         
           <Route
             path={ROUTES.TAGS}
@@ -130,5 +156,7 @@ export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): Reac
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
+    
   );
 }

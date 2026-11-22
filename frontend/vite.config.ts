@@ -22,6 +22,36 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/,
+              priority: 30,
+            },
+            {
+              name: 'vendor-query',
+              test: /node_modules[\\/]@tanstack[\\/]/,
+              priority: 20,
+            },
+            {
+              name: 'vendor-ui',
+              test: /node_modules[\\/](radix-ui|@radix-ui)[\\/]/,
+              priority: 20,
+            },
+            {
+              name: 'vendor-forms',
+              test: /node_modules[\\/](react-hook-form|@hookform|zod)[\\/]/,
+              priority: 20,
+            },
+          ],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
