@@ -1,15 +1,20 @@
 import type * as React from 'react';
+import { DropdownMenu } from 'radix-ui';
 import {
+  CheckIcon,
+  ChevronsUpDownIcon,
   EditIcon,
   ExternalLinkIcon,
   FolderIcon,
   LockIcon,
+  PlusIcon,
   TrashIcon,
 } from '@/components/icons/icons';
 import { Button } from '@/components/ui/button';
 import {
   extractUrlHostname,
   formatEditorialDate,
+  type CollectionResponse,
   type LinkResponse,
   type LinkSortOption,
 } from './links-api';
@@ -18,11 +23,14 @@ import styles from './link-card.module.css';
 export interface LinkCardProps {
   link: LinkResponse;
   collectionName?: string | null;
+  collections?: readonly CollectionResponse[];
+  isUpdatingCollection?: boolean;
   activeTag?: string;
   activeCollectionId?: string;
   sort?: LinkSortOption;
   onSelectTag?: (tagName: string) => void;
   onSelectCollection?: (collectionId: string) => void;
+  onChangeCollection?: (link: LinkResponse, collectionId: string | null) => void;
   onEdit?: (link: LinkResponse) => void;
   onDelete?: (link: LinkResponse) => void;
 }
@@ -30,11 +38,14 @@ export interface LinkCardProps {
 export function LinkCard({
   link,
   collectionName,
+  collections = [],
+  isUpdatingCollection = false,
   activeTag = '',
   activeCollectionId = '',
   sort = 'created_desc',
   onSelectTag,
   onSelectCollection,
+  onChangeCollection,
   onEdit,
   onDelete,
 }: LinkCardProps): React.JSX.Element {
@@ -45,7 +56,7 @@ export function LinkCard({
   const datePrefix = isUpdatedSort ? 'ATUALIZADO ' : '';
   
   const hasCollection = Boolean(link.collection_id && collectionName);
-  const hasTaxonomy = hasCollection || link.tags.length > 0;
+  const hasTaxonomy = hasCollection || Boolean(onChangeCollection) || link.tags.length > 0;
 
   const isCollectionActive = Boolean(
     link.collection_id && activeCollectionId && activeCollectionId === link.collection_id,
@@ -126,23 +137,108 @@ export function LinkCard({
 
       {hasTaxonomy && (
         <div className={styles.taxonomyRow}>
-          {hasCollection && link.collection_id && collectionName && (
-            <button
-              type="button"
-              className={[
-                styles.collectionBadge,
-                isCollectionActive ? styles.collectionBadgeActive : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              aria-pressed={isCollectionActive}
-              onClick={() => {
-                onSelectCollection?.(link.collection_id ?? '');
-              }}
-            >
-              <FolderIcon size={13} />
-              <span>{collectionName}</span>
-            </button>
+          {(hasCollection || onChangeCollection) && (
+            <div className={styles.collectionControlGroup}>
+              {hasCollection && link.collection_id && collectionName && (
+                <button
+                  type="button"
+                  className={[
+                    styles.collectionBadge,
+                    isCollectionActive ? styles.collectionBadgeActive : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-pressed={isCollectionActive}
+                  onClick={() => {
+                    onSelectCollection?.(link.collection_id ?? '');
+                  }}
+                >
+                  <FolderIcon size={13} />
+                  <span>{collectionName}</span>
+                </button>
+              )}
+
+              {onChangeCollection && (
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button
+                      type="button"
+                      className={
+                        hasCollection
+                          ? styles.collectionSwitchTrigger
+                          : styles.collectionAssignTrigger
+                      }
+                      aria-label={`Alterar coleção de ${link.title}`}
+                      disabled={isUpdatingCollection}
+                    >
+                      {hasCollection ? (
+                        <ChevronsUpDownIcon size={13} />
+                      ) : (
+                        <>
+                          <PlusIcon size={12} />
+                          <FolderIcon size={13} />
+                          <span>Coleção</span>
+                        </>
+                      )}
+                    </button>
+                  </DropdownMenu.Trigger>
+
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      className={styles.collectionMenuContent}
+                      side="bottom"
+                      align="start"
+                      sideOffset={6}
+                      collisionPadding={12}
+                    >
+                      <DropdownMenu.Label className={styles.collectionMenuLabel}>
+                        Coleção da referência
+                      </DropdownMenu.Label>
+
+                      <DropdownMenu.Item
+                        className={styles.collectionMenuItem}
+                        disabled={link.collection_id === null}
+                        onSelect={() => {
+                          if (link.collection_id !== null) {
+                            onChangeCollection(link, null);
+                          }
+                        }}
+                      >
+                        <span className={styles.collectionMenuItemText}>Sem coleção</span>
+                        {link.collection_id === null && <CheckIcon size={14} />}
+                      </DropdownMenu.Item>
+
+                      <DropdownMenu.Separator className={styles.collectionMenuSeparator} />
+
+                      {collections.length === 0 ? (
+                        <div className={styles.collectionMenuEmpty}>Nenhuma coleção criada</div>
+                      ) : (
+                        collections.map((col) => {
+                          const isCurrent = col.id === link.collection_id;
+                          return (
+                            <DropdownMenu.Item
+                              key={col.id}
+                              className={styles.collectionMenuItem}
+                              onSelect={() => {
+                                if (!isCurrent) {
+                                  onChangeCollection(link, col.id);
+                                }
+                              }}
+                            >
+                              <span className={styles.collectionMenuItemMain}>
+                                <FolderIcon size={13} />
+                                <span className={styles.collectionMenuItemText}>{col.name}</span>
+                              </span>
+                              {isCurrent && <CheckIcon size={14} />}
+                            </DropdownMenu.Item>
+                          );
+                        })
+                      )}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+              )}
+            </div>
           )}
 
           {link.tags.length > 0 && (

@@ -284,6 +284,11 @@ export interface components {
              */
             description?: string | null;
             /**
+             * Link Ids
+             * @description Lista opcional de IDs de links existentes do usuário para associar à coleção.
+             */
+            link_ids?: string[] | null;
+            /**
              * Name
              * @description Nome da coleção.
              */
@@ -331,6 +336,11 @@ export interface components {
              * @description Nova descrição da coleção (null ou vazio remove a descrição).
              */
             description?: string | null;
+            /**
+             * Link Ids
+             * @description Lista opcional de IDs de links existentes do usuário para sincronizar com a coleção.
+             */
+            link_ids?: string[] | null;
             /**
              * Name
              * @description Novo nome da coleção.

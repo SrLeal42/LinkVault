@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.collections.models import CollectionVisibility
 
+MAX_COLLECTION_BATCH_LINKS: int = 200
+
 
 def _sanitize_name(value: Any) -> str:
     if not isinstance(value, str):
@@ -25,6 +27,28 @@ def _sanitize_description(value: Any) -> str | None:
     return cleaned if cleaned else None
 
 
+def _validate_link_ids(value: Any) -> list[uuid.UUID] | None:
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError("A lista de links deve ser um array de identificadores UUID.")
+    if len(value) > MAX_COLLECTION_BATCH_LINKS:
+        raise ValueError(
+            f"Não é possível associar mais de {MAX_COLLECTION_BATCH_LINKS} links por operação."
+        )
+    deduped: list[uuid.UUID] = []
+    seen: set[uuid.UUID] = set()
+    for item in value:
+        try:
+            parsed = item if isinstance(item, uuid.UUID) else uuid.UUID(str(item))
+        except (ValueError, TypeError) as err:
+            raise ValueError("Cada identificador de link deve ser um UUID válido.") from err
+        if parsed not in seen:
+            seen.add(parsed)
+            deduped.append(parsed)
+    return deduped
+
+
 class CollectionCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -33,6 +57,13 @@ class CollectionCreateRequest(BaseModel):
         default=None,
         max_length=500,
         description="Descrição opcional da coleção.",
+    )
+    link_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        max_length=MAX_COLLECTION_BATCH_LINKS,
+        description=(
+            "Lista opcional de IDs de links existentes do usuário para associar à coleção."
+        ),
     )
 
     @field_validator("name", mode="before")
@@ -44,6 +75,11 @@ class CollectionCreateRequest(BaseModel):
     @classmethod
     def validate_description(cls, v: Any) -> str | None:
         return _sanitize_description(v)
+
+    @field_validator("link_ids", mode="before")
+    @classmethod
+    def validate_link_ids(cls, v: Any) -> list[uuid.UUID] | None:
+        return _validate_link_ids(v)
 
 
 class CollectionUpdateRequest(BaseModel):
@@ -60,6 +96,13 @@ class CollectionUpdateRequest(BaseModel):
         max_length=500,
         description="Nova descrição da coleção (null ou vazio remove a descrição).",
     )
+    link_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        max_length=MAX_COLLECTION_BATCH_LINKS,
+        description=(
+            "Lista opcional de IDs de links existentes do usuário para sincronizar com a coleção."
+        ),
+    )
 
     @field_validator("name", mode="before")
     @classmethod
@@ -72,6 +115,11 @@ class CollectionUpdateRequest(BaseModel):
     @classmethod
     def validate_description(cls, v: Any) -> str | None:
         return _sanitize_description(v)
+
+    @field_validator("link_ids", mode="before")
+    @classmethod
+    def validate_link_ids(cls, v: Any) -> list[uuid.UUID] | None:
+        return _validate_link_ids(v)
 
 
 class CollectionResponse(BaseModel):

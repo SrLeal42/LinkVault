@@ -70,20 +70,34 @@ export function buildCollectionFormDefaultValues(
   };
 }
 
-export function toCollectionCreateRequest(values: CollectionFormValues): CollectionCreateRequest {
+export function toCollectionCreateRequest(
+  values: CollectionFormValues,
+  linkIds?: readonly string[],
+): CollectionCreateRequest {
   const cleanedDescription = values.description.trim();
-  return {
+  const payload: CollectionCreateRequest = {
     name: values.name.trim(),
     description: cleanedDescription.length > 0 ? cleanedDescription : null,
   };
+  if (linkIds && linkIds.length > 0) {
+    payload.link_ids = [...linkIds];
+  }
+  return payload;
 }
 
-export function toCollectionUpdateRequest(values: CollectionFormValues): CollectionUpdateRequest {
+export function toCollectionUpdateRequest(
+  values: CollectionFormValues,
+  linkIds?: readonly string[],
+): CollectionUpdateRequest {
   const cleanedDescription = values.description.trim();
-  return {
+  const payload: CollectionUpdateRequest = {
     name: values.name.trim(),
     description: cleanedDescription.length > 0 ? cleanedDescription : null,
   };
+  if (linkIds !== undefined) {
+    payload.link_ids = [...linkIds];
+  }
+  return payload;
 }
 
 export function applyCollectionApiErrorToForm(

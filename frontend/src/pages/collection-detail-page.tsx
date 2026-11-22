@@ -7,6 +7,7 @@ import {
   AlertCircleIcon,
   CloseIcon,
   EditIcon,
+  FolderIcon,
   GlobeIcon,
   LockIcon,
   PlusIcon,
@@ -46,6 +47,7 @@ import {
   fetchUserTags,
   formatEditorialDate,
   isLinkSortOption,
+  updateLink,
   type LinkResponse,
 } from '@/features/links/links-api';
 import styles from './collection-detail-page.module.css';
@@ -66,6 +68,7 @@ export function CollectionDetailPage({
   const filters = useMemo(() => parseCollectionSearchParams(searchParams), [searchParams]);
 
   const [isEditCollectionOpen, setIsEditCollectionOpen] = useState(false);
+  const [collectionDialogFocus, setCollectionDialogFocus] = useState<'name' | 'links'>('name');
   const [isDeleteCollectionOpen, setIsDeleteCollectionOpen] = useState(false);
   const [isDeletingCollection, setIsDeletingCollection] = useState(false);
 
@@ -73,6 +76,7 @@ export function CollectionDetailPage({
   const [editingLink, setEditingLink] = useState<LinkResponse | null>(null);
   const [deletingLink, setDeletingLink] = useState<LinkResponse | null>(null);
   const [isDeletingLink, setIsDeletingLink] = useState(false);
+  const [updatingCollectionLinkId, setUpdatingCollectionLinkId] = useState<string | null>(null);
 
   const [searchDraft, setSearchDraft] = useState<{
     baseUrlQuery: string;
@@ -254,6 +258,35 @@ export function CollectionDetailPage({
     });
   };
 
+  const handleQuickCollectionChange = async (
+    targetLink: LinkResponse,
+    nextCollectionId: string | null,
+  ): Promise<void> => {
+    if (updatingCollectionLinkId === targetLink.id) {
+      return;
+    }
+    setUpdatingCollectionLinkId(targetLink.id);
+    try {
+      await updateLink(targetLink.id, { collection_id: nextCollectionId });
+      await invalidateCollectionAndLinksCaches();
+      toast({
+        title:
+          nextCollectionId === null
+            ? 'Link removido da coleção.'
+            : 'Coleção do link atualizada.',
+        variant: 'success',
+      });
+    } catch (error: unknown) {
+      toast({
+        title: 'Não foi possível alterar a coleção do link.',
+        description: parseApiError(error).userMessage,
+        variant: 'error',
+      });
+    } finally {
+      setUpdatingCollectionLinkId(null);
+    }
+  };
+
   const handleConfirmDeleteLink = async (): Promise<void> => {
     if (!deletingLink || isDeletingLink) {
       return;
@@ -401,8 +434,21 @@ export function CollectionDetailPage({
               type="button"
               variant="secondary"
               size="sm"
+              leftIcon={<FolderIcon size={14} />}
+              onClick={() => {
+                setCollectionDialogFocus('links');
+                setIsEditCollectionOpen(true);
+              }}
+            >
+              Associar links existentes
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
               leftIcon={<EditIcon size={14} />}
               onClick={() => {
+                setCollectionDialogFocus('name');
                 setIsEditCollectionOpen(true);
               }}
             >
@@ -566,18 +612,31 @@ export function CollectionDetailPage({
           <EmptyState
             eyebrow="COLEÇÃO VAZIA"
             title="Esta coleção ainda não possui links."
-            description="Adicione uma nova referência diretamente nesta coleção ou associe links existentes pela biblioteca."
+            description="Adicione uma nova referência diretamente nesta coleção ou associe links já salvos na sua biblioteca."
             action={
-              <Button
-                type="button"
-                variant="primary"
-                leftIcon={<PlusIcon size={16} />}
-                onClick={() => {
-                  setIsCreateLinkOpen(true);
-                }}
-              >
-                Adicionar link
-              </Button>
+              <div className={styles.headerActions}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  leftIcon={<PlusIcon size={16} />}
+                  onClick={() => {
+                    setIsCreateLinkOpen(true);
+                  }}
+                >
+                  Adicionar link
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  leftIcon={<FolderIcon size={15} />}
+                  onClick={() => {
+                    setCollectionDialogFocus('links');
+                    setIsEditCollectionOpen(true);
+                  }}
+                >
+                  Associar links existentes
+                </Button>
+              </div>
             }
           />
         )
@@ -589,10 +648,15 @@ export function CollectionDetailPage({
                 <LinkCard
                   link={link}
                   collectionName={collection.name}
+                  collections={collections}
+                  isUpdatingCollection={updatingCollectionLinkId === link.id}
                   activeTag={filters.tag}
                   activeCollectionId={collection.id}
                   sort={filters.sort}
                   onSelectTag={handleToggleTag}
+                  onChangeCollection={(target, nextCollectionId) => {
+                    void handleQuickCollectionChange(target, nextCollectionId);
+                  }}
                   onEdit={(target) => {
                     setEditingLink(target);
                   }}
@@ -631,6 +695,7 @@ export function CollectionDetailPage({
         open={isEditCollectionOpen}
         onOpenChange={setIsEditCollectionOpen}
         collection={collection}
+        initialFocus={collectionDialogFocus}
         onSuccess={handleCollectionUpdated}
       />
 

@@ -287,3 +287,92 @@ def test_collections_require_authentication_and_csrf(client: TestClient) -> None
 
     assert client.patch(f"/api/collections/{col_id}", json={"name": "X"}).status_code == 403
     assert client.delete(f"/api/collections/{col_id}").status_code == 403
+
+
+def test_collections_batch_link_ids_sync_and_isolation(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    cookie_a, csrf_a, user_a_id = _register_and_get_credentials(client, "col_batch_a@linkvault.io")
+    cookie_b, csrf_b, user_b_id = _register_and_get_credentials(client, "col_batch_b@linkvault.io")
+
+    # Cria 3 links para A e 1 link para B
+    link_a1 = Link(user_id=user_a_id, url="https://example.com/a1", title="Link A1")
+    link_a2 = Link(user_id=user_a_id, url="https://example.com/a2", title="Link A2")
+    link_a3 = Link(user_id=user_a_id, url="https://example.com/a3", title="Link A3")
+    link_b1 = Link(user_id=user_b_id, url="https://example.com/b1", title="Link B1")
+    db_session.add_all([link_a1, link_a2, link_a3, link_b1])
+    db_session.commit()
+
+    client.cookies.set("linkvault_session", cookie_a)
+
+    # 1. Criação de coleção já associando link_a1 e link_a2 (com duplicata deduplicada)
+    create_res = client.post(
+        "/api/collections",
+        json={
+            "name": "Coleção Inicial",
+            "link_ids": [str(link_a1.id), str(link_a2.id), str(link_a1.id)],
+        },
+        headers={"X-CSRF-Token": csrf_a},
+    )
+    assert create_res.status_code == 201
+    col_1_id = uuid.UUID(str(create_res.json()["id"]))
+    assert create_res.json()["link_count"] == 2
+
+    # 2. PATCH sem link_ids preserva os links associados
+    rename_res = client.patch(
+        f"/api/collections/{col_1_id}",
+        json={"name": "Coleção Renomeada"},
+        headers={"X-CSRF-Token": csrf_a},
+    )
+    assert rename_res.status_code == 200
+    assert rename_res.json()["link_count"] == 2
+
+    # 3. PATCH com link_ids remove link_a1 (desmarcado) e adiciona link_a3
+    sync_res = client.patch(
+        f"/api/collections/{col_1_id}",
+        json={"link_ids": [str(link_a2.id), str(link_a3.id)]},
+        headers={"X-CSRF-Token": csrf_a},
+    )
+    assert sync_res.status_code == 200
+    assert sync_res.json()["link_count"] == 2
+
+    db_session.expire_all()
+    persisted_a1 = db_session.scalar(select(Link).where(Link.id == link_a1.id))
+    persisted_a2 = db_session.scalar(select(Link).where(Link.id == link_a2.id))
+    persisted_a3 = db_session.scalar(select(Link).where(Link.id == link_a3.id))
+    assert persisted_a1 is not None and persisted_a1.collection_id is None
+    assert persisted_a2 is not None and persisted_a2.collection_id == col_1_id
+    assert persisted_a3 is not None and persisted_a3.collection_id == col_1_id
+
+    # 4. Criação de segunda coleção movendo link_a2 (relação 1:N)
+    create_res_2 = client.post(
+        "/api/collections",
+        json={"name": "Destino", "link_ids": [str(link_a2.id)]},
+        headers={"X-CSRF-Token": csrf_a},
+    )
+    assert create_res_2.status_code == 201
+    assert create_res_2.json()["link_count"] == 1
+    assert client.get(f"/api/collections/{col_1_id}").json()["link_count"] == 1
+
+    # 5. Isolamento cross-user: tentar associar link de B ou UUID inexistente retorna 404
+    cross_create = client.post(
+        "/api/collections",
+        json={"name": "Invasora", "link_ids": [str(link_b1.id)]},
+        headers={"X-CSRF-Token": csrf_a},
+    )
+    assert cross_create.status_code == 404
+
+    cross_patch = client.patch(
+        f"/api/collections/{col_1_id}",
+        json={"link_ids": [str(link_b1.id)]},
+        headers={"X-CSRF-Token": csrf_a},
+    )
+    assert cross_patch.status_code == 404
+
+    # Link de B permanece sem coleção
+    client.cookies.set("linkvault_session", cookie_b)
+    db_session.expire_all()
+    persisted_b1 = db_session.scalar(select(Link).where(Link.id == link_b1.id))
+    assert persisted_b1 is not None and persisted_b1.collection_id is None
+    assert csrf_b != ""

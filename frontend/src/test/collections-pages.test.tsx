@@ -514,4 +514,166 @@ describe('Navegação contextual e CollectionDetailPage (/collections/:collectio
     );
     expect(linksSpy).not.toHaveBeenCalled();
   });
+
+  it('permite atribuir e remover coleção rapidamente pelo menu do LinkCard na LibraryPage', async () => {
+    let linkItem: LinkResponse = {
+      id: '01933b2e-cccc-7000-8000-000000000077',
+      collection_id: null,
+      url: 'https://vitest.dev/',
+      title: 'Vitest Documentation',
+      description: 'Framework de testes rápido para Vite.',
+      notes: null,
+      tags: [],
+      created_at: '2026-11-20T10:00:00Z',
+      updated_at: '2026-11-20T10:00:00Z',
+    };
+    const capturedPatches: unknown[] = [];
+
+    server.use(
+      http.get('*/api/collections', () =>
+        HttpResponse.json({ items: [COLLECTION_BACKEND, COLLECTION_SECURITY] }),
+      ),
+      http.get('*/api/tags', () => HttpResponse.json({ items: [] })),
+      http.get('*/api/links', () =>
+        HttpResponse.json<LinkListResponse>({ items: [linkItem], next_cursor: null }),
+      ),
+      http.patch('*/api/links/:linkId', async ({ request }) => {
+        const body = (await request.json()) as { collection_id: string | null };
+        capturedPatches.push(body);
+        linkItem = { ...linkItem, collection_id: body.collection_id };
+        return HttpResponse.json(linkItem);
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCollectionsApp([ROUTES.LIBRARY]);
+
+    const assignTrigger = await screen.findByRole('button', {
+      name: 'Alterar coleção de Vitest Documentation',
+    });
+    await user.click(assignTrigger);
+
+    const menu = await screen.findByRole('menu');
+    await user.click(within(menu).getByRole('menuitem', { name: 'Backend Python' }));
+
+    expect(await screen.findByRole('button', { name: 'Backend Python' })).toBeInTheDocument();
+    expect(capturedPatches[0]).toEqual({ collection_id: COLLECTION_BACKEND.id });
+
+    // Remove da coleção pelo menu rápido
+    await user.click(
+      screen.getByRole('button', { name: 'Alterar coleção de Vitest Documentation' }),
+    );
+    const secondMenu = await screen.findByRole('menu');
+    await user.click(within(secondMenu).getByRole('menuitem', { name: 'Sem coleção' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Backend Python' })).not.toBeInTheDocument();
+    });
+    expect(capturedPatches[1]).toEqual({ collection_id: null });
+  });
+
+  it('permite criar coleção já com links existentes e associar/desmarcar links via botão em /collections/:collectionId', async () => {
+    const looseLink: LinkResponse = {
+      id: '01933b2e-cccc-7000-8000-000000000088',
+      collection_id: null,
+      url: 'https://react.dev/',
+      title: 'React Docs',
+      description: 'Documentação oficial do React.',
+      notes: null,
+      tags: [],
+      created_at: '2026-11-20T10:00:00Z',
+      updated_at: '2026-11-20T10:00:00Z',
+    };
+    const existingCollectionLink = SAMPLE_LINKS[0];
+    if (!existingCollectionLink) {
+      throw new Error('Link de exemplo ausente.');
+    }
+
+    let capturedCreateBody: unknown = null;
+    let capturedPatchBody: unknown = null;
+
+    server.use(
+      http.get('*/api/collections', () => HttpResponse.json({ items: [COLLECTION_BACKEND] })),
+      http.get('*/api/collections/:collectionId', () => HttpResponse.json(COLLECTION_BACKEND)),
+      http.get('*/api/tags', () => HttpResponse.json({ items: SAMPLE_TAGS })),
+      http.get('*/api/links', () =>
+        HttpResponse.json<LinkListResponse>({
+          items: [existingCollectionLink, looseLink],
+          next_cursor: null,
+        }),
+      ),
+      http.post('*/api/collections', async ({ request }) => {
+        capturedCreateBody = await request.json();
+        return HttpResponse.json(
+          {
+            ...COLLECTION_BACKEND,
+            id: '01933b2e-aaaa-7000-8000-000000000055',
+            name: 'Nova com Links',
+            link_count: 1,
+          },
+          { status: 201 },
+        );
+      }),
+      http.patch('*/api/collections/:collectionId', async ({ request }) => {
+        capturedPatchBody = await request.json();
+        return HttpResponse.json({
+          ...COLLECTION_BACKEND,
+          link_count: 1,
+          updated_at: '2026-11-22T15:00:00Z',
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCollectionsApp([ROUTES.COLLECTIONS]);
+
+    expect(await screen.findByText('Backend Python')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Nova coleção' }));
+    const createDialog = await screen.findByRole('dialog', { name: 'Nova coleção' });
+
+    await user.type(within(createDialog).getByLabelText(/^Nome/i), 'Nova com Links');
+    const reactCheckbox = await within(createDialog).findByRole('checkbox', {
+      name: /React Docs/i,
+    });
+    await user.click(reactCheckbox);
+    await user.click(within(createDialog).getByRole('button', { name: 'Criar coleção' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Nova coleção' })).not.toBeInTheDocument();
+    });
+    expect(capturedCreateBody).toEqual({
+      name: 'Nova com Links',
+      description: null,
+      link_ids: [looseLink.id],
+    });
+
+    // Abre a coleção e clica em "Associar links existentes"
+    await user.click(screen.getByRole('link', { name: 'Abrir coleção Backend Python' }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Backend Python' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Associar links existentes' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Editar coleção' });
+
+    const fastapiCheckbox = await within(editDialog).findByRole('checkbox', {
+      name: /Documentação Oficial do FastAPI/i,
+    });
+    const looseCheckbox = within(editDialog).getByRole('checkbox', { name: /React Docs/i });
+    expect(fastapiCheckbox).toBeChecked();
+    expect(looseCheckbox).not.toBeChecked();
+
+    await user.click(fastapiCheckbox);
+    await user.click(looseCheckbox);
+    await user.click(within(editDialog).getByRole('button', { name: 'Salvar alterações' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Editar coleção' })).not.toBeInTheDocument();
+    });
+    expect(capturedPatchBody).toEqual({
+      name: COLLECTION_BACKEND.name,
+      description: COLLECTION_BACKEND.description,
+      link_ids: [looseLink.id],
+    });
+  });
 });

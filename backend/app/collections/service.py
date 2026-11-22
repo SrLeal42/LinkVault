@@ -1,7 +1,8 @@
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.collections.models import Collection
@@ -79,6 +80,50 @@ def list_user_collections(
     ]
 
 
+def _sync_collection_links(
+    db: Session,
+    *,
+    collection: Collection,
+    link_ids: Sequence[uuid.UUID],
+    unlink_missing: bool,
+) -> None:
+    unique_ids = list(dict.fromkeys(link_ids))
+    now = datetime.now(UTC)
+
+    if unique_ids:
+        owned_count = int(
+            db.scalar(
+                select(func.count(Link.id)).where(
+                    Link.user_id == collection.user_id,
+                    Link.id.in_(unique_ids),
+                )
+            )
+            or 0
+        )
+        if owned_count != len(unique_ids):
+            raise NotFoundError(detail="Um ou mais links informados não foram encontrados.")
+
+    if unlink_missing:
+        unlink_stmt = update(Link).where(
+            Link.user_id == collection.user_id,
+            Link.collection_id == collection.id,
+        )
+        if unique_ids:
+            unlink_stmt = unlink_stmt.where(Link.id.not_in(unique_ids))
+        db.execute(unlink_stmt.values(collection_id=None, updated_at=now))
+
+    if unique_ids:
+        db.execute(
+            update(Link)
+            .where(
+                Link.user_id == collection.user_id,
+                Link.id.in_(unique_ids),
+            )
+            .values(collection_id=collection.id, updated_at=now)
+        )
+    db.flush()
+
+
 def create_collection(
     db: Session,
     *,
@@ -92,8 +137,19 @@ def create_collection(
     )
     db.add(collection)
     db.flush()
+
+    link_count = 0
+    if payload.link_ids:
+        _sync_collection_links(
+            db,
+            collection=collection,
+            link_ids=payload.link_ids,
+            unlink_missing=False,
+        )
+        link_count = len(payload.link_ids)
+
     db.commit()
-    return _to_collection_response(collection, link_count=0)
+    return _to_collection_response(collection, link_count=link_count)
 
 
 def get_collection_details(
@@ -124,6 +180,15 @@ def update_collection(
 
     if "description" in fields_set:
         collection.description = payload.description
+        modified = True
+
+    if "link_ids" in fields_set and payload.link_ids is not None:
+        _sync_collection_links(
+            db,
+            collection=collection,
+            link_ids=payload.link_ids,
+            unlink_missing=True,
+        )
         modified = True
 
     if modified:

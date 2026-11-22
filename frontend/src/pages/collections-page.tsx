@@ -94,11 +94,7 @@ export function CollectionsPage(): React.JSX.Element {
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.headerCopy}>
-          <p className={styles.eyebrow}>ACERVO ORGANIZADO</p>
           <h2 className={styles.pageTitle}>Minhas Coleções</h2>
-          <p className={styles.pageSubtitle}>
-            Agrupe suas referências por tema ou projeto. Novas coleções nascem privadas por padrão.
-          </p>
         </div>
 
         <Button

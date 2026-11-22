@@ -9,7 +9,10 @@ import { ConfirmDialog } from '@/components/ui/confirmdialog';
 import { EmptyState } from '@/components/ui/emptystate';
 import { FormField, Input, Select } from '@/components/ui/formfield';
 import { useToast } from '@/components/ui/toast-context';
-import { buildCollectionDetailPath } from '@/features/collections/collections-api';
+import {
+  COLLECTIONS_QUERY_KEY_PREFIX,
+  buildCollectionDetailPath,
+} from '@/features/collections/collections-api';
 import { LinkCard } from '@/features/links/link-card';
 import { LinkFormDialog } from '@/features/links/link-form-dialog';
 import {
@@ -27,6 +30,7 @@ import {
   hasActiveLibraryFilters,
   isLinkSortOption,
   parseLibrarySearchParams,
+  updateLink,
   type LibraryFilterState,
   type LinkResponse,
 } from '@/features/links/links-api';
@@ -55,6 +59,7 @@ export function LibraryPage({
   const [editingLink, setEditingLink] = useState<LinkResponse | null>(null);
   const [deletingLink, setDeletingLink] = useState<LinkResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [updatingCollectionLinkId, setUpdatingCollectionLinkId] = useState<string | null>(null);
 
   const [searchDraft, setSearchDraft] = useState<{
     baseUrlQuery: string;
@@ -171,8 +176,37 @@ export function LibraryPage({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: LINKS_QUERY_KEY_PREFIX }),
       queryClient.invalidateQueries({ queryKey: TAGS_LIST_QUERY_KEY }),
-      queryClient.invalidateQueries({ queryKey: COLLECTIONS_LIST_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: COLLECTIONS_QUERY_KEY_PREFIX }),
     ]);
+  };
+
+  const handleQuickCollectionChange = async (
+    targetLink: LinkResponse,
+    nextCollectionId: string | null,
+  ): Promise<void> => {
+    if (updatingCollectionLinkId === targetLink.id) {
+      return;
+    }
+    setUpdatingCollectionLinkId(targetLink.id);
+    try {
+      await updateLink(targetLink.id, { collection_id: nextCollectionId });
+      await invalidateLibraryCaches();
+      toast({
+        title:
+          nextCollectionId === null
+            ? 'Link removido da coleção.'
+            : 'Coleção do link atualizada.',
+        variant: 'success',
+      });
+    } catch (error: unknown) {
+      toast({
+        title: 'Não foi possível alterar a coleção do link.',
+        description: parseApiError(error).userMessage,
+        variant: 'error',
+      });
+    } finally {
+      setUpdatingCollectionLinkId(null);
+    }
   };
 
   const handleOpenCreate = (): void => {
@@ -428,11 +462,16 @@ export function LibraryPage({
                   collectionName={
                     link.collection_id ? (collectionNameById.get(link.collection_id) ?? null) : null
                   }
+                  collections={collections}
+                  isUpdatingCollection={updatingCollectionLinkId === link.id}
                   activeTag={filters.tag}
                   activeCollectionId={filters.collectionId}
                   sort={filters.sort}
                   onSelectTag={handleToggleTag}
                   onSelectCollection={handleOpenCollection}
+                  onChangeCollection={(target, nextCollectionId) => {
+                    void handleQuickCollectionChange(target, nextCollectionId);
+                  }}
                   onEdit={handleOpenEdit}
                   onDelete={handleOpenDelete}
                 />
