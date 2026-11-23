@@ -8,8 +8,31 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError
+from app.links.models import LinkTag
 from app.tags.models import Tag
-from app.tags.schemas import TagCreateRequest, TagUpdateRequest
+from app.tags.schemas import TagCreateRequest, TagResponse, TagUpdateRequest
+
+
+def _to_tag_response(tag: Tag, *, link_count: int) -> TagResponse:
+    return TagResponse(
+        id=tag.id,
+        name=tag.name,
+        link_count=link_count,
+        created_at=tag.created_at,
+    )
+
+
+def count_tag_links(
+    db: Session,
+    *,
+    tag_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> int:
+    stmt = select(func.count(LinkTag.link_id)).where(
+        LinkTag.tag_id == tag_id,
+        LinkTag.user_id == user_id,
+    )
+    return int(db.scalar(stmt) or 0)
 
 
 def resolve_owned_tag(
@@ -33,11 +56,22 @@ def list_user_tags(
     db: Session,
     *,
     user_id: uuid.UUID,
-) -> list[Tag]:
+) -> list[TagResponse]:
     stmt = (
-        select(Tag).where(Tag.user_id == user_id).order_by(func.lower(Tag.name).asc(), Tag.id.asc())
+        select(Tag, func.count(LinkTag.link_id))
+        .outerjoin(
+            LinkTag,
+            (LinkTag.tag_id == Tag.id) & (LinkTag.user_id == Tag.user_id),
+        )
+        .where(Tag.user_id == user_id)
+        .group_by(Tag.id)
+        .order_by(func.lower(Tag.name).asc(), Tag.id.asc())
     )
-    return list(db.scalars(stmt).all())
+    rows = db.execute(stmt).all()
+    return [
+        _to_tag_response(tag, link_count=int(count or 0))
+        for tag, count in rows
+    ]
 
 
 def create_tag(
@@ -45,7 +79,7 @@ def create_tag(
     *,
     user_id: uuid.UUID,
     payload: TagCreateRequest,
-) -> Tag:
+) -> TagResponse:
     existing = db.scalar(
         select(Tag).where(
             Tag.user_id == user_id,
@@ -64,7 +98,7 @@ def create_tag(
         raise ConflictError(detail="Já existe uma tag com este nome.") from err
 
     db.commit()
-    return tag
+    return _to_tag_response(tag, link_count=0)
 
 
 def update_tag(
@@ -72,7 +106,7 @@ def update_tag(
     *,
     tag: Tag,
     payload: TagUpdateRequest,
-) -> Tag:
+) -> TagResponse:
     normalized_lower = payload.name.lower()
     conflict = db.scalar(
         select(Tag).where(
@@ -92,7 +126,8 @@ def update_tag(
         raise ConflictError(detail="Já existe uma tag com este nome.") from err
 
     db.commit()
-    return tag
+    link_count = count_tag_links(db, tag_id=tag.id, user_id=tag.user_id)
+    return _to_tag_response(tag, link_count=link_count)
 
 
 def delete_tag(

@@ -177,9 +177,9 @@ export function formatEditorialDate(isoDate: string | null | undefined): string 
     return '';
   }
 
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const month = PT_BR_MONTHS[date.getUTCMonth()] ?? '';
-  const year = String(date.getUTCFullYear());
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = PT_BR_MONTHS[date.getMonth()] ?? '';
+  const year = String(date.getFullYear());
   return `${day} ${month} ${year}`;
 }
 

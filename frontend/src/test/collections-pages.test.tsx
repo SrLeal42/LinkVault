@@ -99,8 +99,18 @@ const COLLECTION_SECURITY: CollectionResponse = {
 };
 
 const SAMPLE_TAGS: TagResponse[] = [
-  { id: '01933b2e-bbbb-7000-8000-000000000001', name: 'fastapi', created_at: '2026-11-10T10:00:00Z' },
-  { id: '01933b2e-bbbb-7000-8000-000000000002', name: 'postgres', created_at: '2026-11-10T10:00:00Z' },
+  {
+    id: '01933b2e-bbbb-7000-8000-000000000001',
+    name: 'fastapi',
+    link_count: 1,
+    created_at: '2026-11-10T10:00:00Z',
+  },
+  {
+    id: '01933b2e-bbbb-7000-8000-000000000002',
+    name: 'postgres',
+    link_count: 1,
+    created_at: '2026-11-10T10:00:00Z',
+  },
 ];
 
 const SAMPLE_LINKS: LinkResponse[] = [
@@ -112,7 +122,12 @@ const SAMPLE_LINKS: LinkResponse[] = [
     description: 'Guia completo de APIs REST com Python.',
     notes: 'Checar dependências.',
     tags: [
-      { id: '01933b2e-bbbb-7000-8000-000000000001', name: 'fastapi', created_at: '2026-11-10T10:00:00Z' },
+      {
+        id: '01933b2e-bbbb-7000-8000-000000000001',
+        name: 'fastapi',
+        link_count: 1,
+        created_at: '2026-11-10T10:00:00Z',
+      },
     ],
     created_at: '2026-11-14T10:00:00Z',
     updated_at: '2026-11-14T10:00:00Z',
@@ -127,7 +142,12 @@ const SECOND_PAGE_LINK: LinkResponse = {
   description: 'Índices GIN para pesquisa parcial.',
   notes: null,
   tags: [
-    { id: '01933b2e-bbbb-7000-8000-000000000002', name: 'postgres', created_at: '2026-11-10T10:00:00Z' },
+    {
+      id: '01933b2e-bbbb-7000-8000-000000000002',
+      name: 'postgres',
+      link_count: 1,
+      created_at: '2026-11-10T10:00:00Z',
+    },
   ],
   created_at: '2026-11-12T10:00:00Z',
   updated_at: '2026-11-12T10:00:00Z',

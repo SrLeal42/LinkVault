@@ -34,8 +34,11 @@ def _register_and_get_credentials(client: TestClient, email: str) -> tuple[str, 
     return cookie, str(data["csrf_token"]), uuid.UUID(str(data["user"]["id"]))
 
 
-def test_tags_crud_and_case_insensitive_ordering(client: TestClient) -> None:
-    cookie, csrf, _ = _register_and_get_credentials(client, "tags_crud@linkvault.io")
+def test_tags_crud_and_case_insensitive_ordering(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    cookie, csrf, user_id = _register_and_get_credentials(client, "tags_crud@linkvault.io")
     client.cookies.set("linkvault_session", cookie)
 
     res_z = client.post(
@@ -45,6 +48,7 @@ def test_tags_crud_and_case_insensitive_ordering(client: TestClient) -> None:
     )
     assert res_z.status_code == 201
     assert res_z.json()["name"] == "zsh"
+    assert res_z.json()["link_count"] == 0
 
     res_a = client.post(
         "/api/tags",
@@ -52,10 +56,33 @@ def test_tags_crud_and_case_insensitive_ordering(client: TestClient) -> None:
         headers={"X-CSRF-Token": csrf},
     )
     assert res_a.status_code == 201
+    tag_a_id = uuid.UUID(str(res_a.json()["id"]))
+
+    link_1 = Link(user_id=user_id, url="https://example.com/1", title="Async 1")
+    link_2 = Link(user_id=user_id, url="https://example.com/2", title="Async 2")
+    db_session.add_all([link_1, link_2])
+    db_session.flush()
+    db_session.add_all(
+        [
+            LinkTag(link_id=link_1.id, tag_id=tag_a_id, user_id=user_id),
+            LinkTag(link_id=link_2.id, tag_id=tag_a_id, user_id=user_id),
+        ]
+    )
+    db_session.commit()
 
     list_res = client.get("/api/tags")
     assert list_res.status_code == 200
-    assert [item["name"] for item in list_res.json()["items"]] == ["AsyncIO", "zsh"]
+    items = list_res.json()["items"]
+    assert [item["name"] for item in items] == ["AsyncIO", "zsh"]
+    assert [item["link_count"] for item in items] == [2, 0]
+
+    patch_res = client.patch(
+        f"/api/tags/{tag_a_id}",
+        json={"name": "asyncio"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json()["link_count"] == 2
 
     # Validação de nome em branco e campo extra
     assert (

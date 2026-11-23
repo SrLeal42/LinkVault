@@ -102,9 +102,24 @@ const SAMPLE_COLLECTIONS: CollectionResponse[] = [
 ];
 
 const SAMPLE_TAGS: TagResponse[] = [
-  { id: '01933b2e-bbbb-7000-8000-000000000001', name: 'fastapi', created_at: '2026-11-10T10:00:00Z' },
-  { id: '01933b2e-bbbb-7000-8000-000000000002', name: 'postgres', created_at: '2026-11-10T10:00:00Z' },
-  { id: '01933b2e-bbbb-7000-8000-000000000003', name: 'csrf', created_at: '2026-11-10T10:00:00Z' },
+  {
+    id: '01933b2e-bbbb-7000-8000-000000000001',
+    name: 'fastapi',
+    link_count: 1,
+    created_at: '2026-11-10T10:00:00Z',
+  },
+  {
+    id: '01933b2e-bbbb-7000-8000-000000000002',
+    name: 'postgres',
+    link_count: 1,
+    created_at: '2026-11-10T10:00:00Z',
+  },
+  {
+    id: '01933b2e-bbbb-7000-8000-000000000003',
+    name: 'csrf',
+    link_count: 1,
+    created_at: '2026-11-10T10:00:00Z',
+  },
 ];
 
 const SAMPLE_LINKS: LinkResponse[] = [
@@ -116,7 +131,12 @@ const SAMPLE_LINKS: LinkResponse[] = [
     description: 'Guia completo de dependências, Pydantic v2 e OpenAPI.',
     notes: 'Revisar seção de dependências com yield.',
     tags: [
-      { id: '01933b2e-bbbb-7000-8000-000000000001', name: 'fastapi', created_at: '2026-11-10T10:00:00Z' },
+      {
+        id: '01933b2e-bbbb-7000-8000-000000000001',
+        name: 'fastapi',
+        link_count: 1,
+        created_at: '2026-11-10T10:00:00Z',
+      },
     ],
     created_at: '2026-11-14T10:00:00Z',
     updated_at: '2026-11-18T15:30:00Z',
@@ -129,7 +149,12 @@ const SAMPLE_LINKS: LinkResponse[] = [
     description: 'Defesa em camadas contra CSRF em aplicações web.',
     notes: null,
     tags: [
-      { id: '01933b2e-bbbb-7000-8000-000000000003', name: 'csrf', created_at: '2026-11-10T10:00:00Z' },
+      {
+        id: '01933b2e-bbbb-7000-8000-000000000003',
+        name: 'csrf',
+        link_count: 1,
+        created_at: '2026-11-10T10:00:00Z',
+      },
     ],
     created_at: '2026-11-12T08:00:00Z',
     updated_at: '2026-11-12T08:00:00Z',
@@ -144,7 +169,12 @@ const SECOND_PAGE_LINK: LinkResponse = {
   description: 'Índices GIN para pesquisa parcial por trigramas.',
   notes: null,
   tags: [
-    { id: '01933b2e-bbbb-7000-8000-000000000002', name: 'postgres', created_at: '2026-11-10T10:00:00Z' },
+    {
+      id: '01933b2e-bbbb-7000-8000-000000000002',
+      name: 'postgres',
+      link_count: 1,
+      created_at: '2026-11-10T10:00:00Z',
+    },
   ],
   created_at: '2026-11-10T09:00:00Z',
   updated_at: '2026-11-10T09:00:00Z',
@@ -207,6 +237,9 @@ describe('Utilitários de links e query string', () => {
     expect(extractUrlHostname('https://www.fastapi.tiangolo.com/docs')).toBe('fastapi.tiangolo.com');
     expect(extractUrlHostname('url-invalida')).toBe('url-invalida');
     expect(formatEditorialDate('2026-11-14T10:00:00Z')).toBe('14 NOV 2026');
+    expect(formatEditorialDate(new Date(2026, 10, 22, 21, 30, 0).toISOString())).toBe(
+      '22 NOV 2026',
+    );
     expect(formatEditorialDate(null)).toBe('');
 
     const parsed = parseLibrarySearchParams(
@@ -514,9 +547,14 @@ describe('CRUD de links (LinkFormDialog e ConfirmDialog)', () => {
           description: 'Gerenciamento de estado assíncrono em React.',
           notes: 'Estudar useInfiniteQuery.',
           tags: [
-            { id: 't-react', name: 'react', created_at: '2026-11-21T10:00:00Z' },
-            { id: '01933b2e-bbbb-7000-8000-000000000001', name: 'fastapi', created_at: '2026-11-10T10:00:00Z' },
-            { id: 't-cache', name: 'cache', created_at: '2026-11-21T10:00:00Z' },
+            { id: 't-react', name: 'react', link_count: 1, created_at: '2026-11-21T10:00:00Z' },
+            {
+              id: '01933b2e-bbbb-7000-8000-000000000001',
+              name: 'fastapi',
+              link_count: 2,
+              created_at: '2026-11-10T10:00:00Z',
+            },
+            { id: 't-cache', name: 'cache', link_count: 1, created_at: '2026-11-21T10:00:00Z' },
           ],
           created_at: '2026-11-21T10:00:00Z',
           updated_at: '2026-11-21T10:00:00Z',
@@ -599,7 +637,7 @@ describe('CRUD de links (LinkFormDialog e ConfirmDialog)', () => {
         const updated: LinkResponse = {
           ...existing,
           title: 'FastAPI Guia Atualizado',
-          tags: [{ id: 't-api', name: 'api', created_at: '2026-11-21T12:00:00Z' }],
+          tags: [{ id: 't-api', name: 'api', link_count: 1, created_at: '2026-11-21T12:00:00Z' }],
           updated_at: '2026-11-21T12:00:00Z',
         };
         linksStore = linksStore.map((item) => (item.id === updated.id ? updated : item));

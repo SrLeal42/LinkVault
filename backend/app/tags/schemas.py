@@ -41,6 +41,11 @@ class TagResponse(BaseModel):
 
     id: uuid.UUID
     name: str
+    link_count: int = Field(
+        default=0,
+        ge=0,
+        description="Quantidade de links associados à tag.",
+    )
     created_at: datetime
 
 

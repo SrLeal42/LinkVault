@@ -576,6 +576,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Link Count
+             * @description Quantidade de links associados à tag.
+             * @default 0
+             */
+            link_count: number;
             /** Name */
             name: string;
         };

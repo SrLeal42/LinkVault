@@ -45,7 +45,7 @@ Para consultar a especificação técnica e de produto completa da aplicação, 
   - [x] **3.10:** Biblioteca — listagem e `LinkCard` (hierarquia editorial, abertura externa separada das ações, metadados em `IBM Plex Mono`), pesquisa (`pg_trgm`), filtros, ordenação, paginação por cursor e estados vazios/carregamento.
   - [x] **3.11:** Biblioteca — CRUD de links (`LinkFormDialog` com criação rápida de tags por nome, edição e confirmação de exclusão).
   - [x] **3.12:** Coleções — página `/collections` (listagem com `link_count`, badge `Privada`, affordance explícita de abertura e CRUD) e página contextual `/collections/:collectionId`.
-  - [ ] **3.13:** Tags — página `/tags` em catálogo compacto (listagem, criação, renomeação com tratamento de `409 Conflict`, atalho de filtro e exclusão).
+  - [x] **3.13:** Tags — página `/tags` em catálogo compacto (listagem, criação, renomeação com tratamento de `409 Conflict`, atalho de filtro e exclusão).
 - [ ] Garantir e testar o isolamento entre usuários.
 
 ### 1.4. Fase 4 — Compartilhamento público

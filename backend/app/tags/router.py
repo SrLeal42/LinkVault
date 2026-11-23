@@ -29,8 +29,8 @@ def list_tags(
     current_user: CurrentUser,
     session: DbSession,
 ) -> TagListResponse:
-    tags = list_user_tags(session, user_id=current_user.id)
-    return TagListResponse(items=[TagResponse.model_validate(tag) for tag in tags])
+    items = list_user_tags(session, user_id=current_user.id)
+    return TagListResponse(items=items)
 
 
 @router.post(
@@ -45,8 +45,7 @@ def create_tag_endpoint(
     current_user: CurrentUser,
     session: DbSession,
 ) -> TagResponse:
-    tag = create_tag(session, user_id=current_user.id, payload=payload)
-    return TagResponse.model_validate(tag)
+    return create_tag(session, user_id=current_user.id, payload=payload)
 
 
 @router.patch(
@@ -61,8 +60,7 @@ def update_tag_endpoint(
     tag: OwnedTag,
     session: DbSession,
 ) -> TagResponse:
-    updated = update_tag(session, tag=tag, payload=payload)
-    return TagResponse.model_validate(updated)
+    return update_tag(session, tag=tag, payload=payload)
 
 
 @router.delete(

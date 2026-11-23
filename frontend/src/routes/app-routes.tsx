@@ -29,6 +29,9 @@ const CollectionDetailPage = lazy(() =>
     default: module.CollectionDetailPage,
   })),
 );
+const TagsPage = lazy(() =>
+  import('@/pages/tags-page').then((module) => ({ default: module.TagsPage })),
+);
 
 export interface AppRoutesProps {
   enableGuardRedirects?: boolean;
@@ -126,17 +129,8 @@ export function AppRoutes({ enableGuardRedirects = true }: AppRoutesProps): Reac
           <Route path={ROUTES.COLLECTIONS} element={<CollectionsPage />} />
           
           <Route path={ROUTES.COLLECTION_DETAIL} element={<CollectionDetailPage />} />
-        
-          <Route
-            path={ROUTES.TAGS}
-            element={
-              <RoutePlaceholder
-                eyebrow="TAGS"
-                title="Gerenciar Tags"
-                description="Catálogo de tags reservado para a etapa 3.13."
-              />
-            }
-          />
+
+          <Route path={ROUTES.TAGS} element={<TagsPage />} />
         
         </Route>
       
