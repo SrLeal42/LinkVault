@@ -68,10 +68,7 @@ def list_user_tags(
         .order_by(func.lower(Tag.name).asc(), Tag.id.asc())
     )
     rows = db.execute(stmt).all()
-    return [
-        _to_tag_response(tag, link_count=int(count or 0))
-        for tag, count in rows
-    ]
+    return [_to_tag_response(tag, link_count=int(count or 0)) for tag, count in rows]
 
 
 def create_tag(
